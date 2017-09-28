@@ -1,1 +1,0 @@
-/usr/bin/X11/cc  -O0   CMakeFiles/ECE454_Lab2.dir/ECE454-Lab2.c.o CMakeFiles/ECE454_Lab2.dir/utilities.c.o CMakeFiles/ECE454_Lab2.dir/fcyc.c.o CMakeFiles/ECE454_Lab2.dir/clock.c.o CMakeFiles/ECE454_Lab2.dir/implementation_reference.c.o CMakeFiles/ECE454_Lab2.dir/implementation.c.o  -o ECE454_Lab2 

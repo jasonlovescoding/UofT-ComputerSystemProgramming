@@ -1,3 +1,0 @@
-/guest/z/zhan5612/hw2/bin/CMakeFiles/rebuild_cache.dir
-/guest/z/zhan5612/hw2/bin/CMakeFiles/edit_cache.dir
-/guest/z/zhan5612/hw2/bin/CMakeFiles/ECE454_Lab2.dir
