@@ -1,0 +1,110 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/ECE454-Lab2.c
+ctype.h
+-
+stdio.h
+-
+stdlib.h
+-
+unistd.h
+-
+memory.h
+-
+stdbool.h
+-
+loadbmp.h
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/loadbmp.h
+utilities.h
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/utilities.h
+fcyc.h
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/fcyc.h
+implementation_reference.h
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/implementation_reference.h
+implementation.h
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/implementation.h
+
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/clock.c
+stdio.h
+-
+stdlib.h
+-
+unistd.h
+-
+sys/times.h
+-
+clock.h
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/clock.h
+
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/clock.h
+
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/fcyc.c
+stdlib.h
+-
+sys/times.h
+-
+stdio.h
+-
+stdbool.h
+-
+clock.h
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/clock.h
+fcyc.h
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/fcyc.h
+
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/fcyc.h
+
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/implementation.c
+stdio.h
+-
+string.h
+-
+stdbool.h
+-
+utilities.h
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/utilities.h
+implementation_reference.h
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/implementation_reference.h
+
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/implementation.h
+
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/implementation_reference.c
+stdio.h
+-
+string.h
+-
+stdbool.h
+-
+utilities.h
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/utilities.h
+
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/implementation_reference.h
+
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/loadbmp.h
+stdlib.h
+-
+string.h
+-
+stdio.h
+-
+
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/utilities.c
+stdio.h
+-
+stdlib.h
+-
+string.h
+-
+stdbool.h
+-
+utilities.h
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/utilities.h
+
+/Users/jasonzhang/desktop/ECE454 OSP/lab/LAB2/utilities.h
+
