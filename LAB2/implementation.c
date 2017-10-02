@@ -10,7 +10,8 @@
 // width and height of this image, globally visible
 unsigned int g_width, g_height;
 // global index for double-buffering
-int g_rendered = 0;
+bool g_rendered = 0;
+int temp1, temp2, temp3;
 /**********************************************************************************************************************/
 
 // FUNCTION DECLARATIONS
