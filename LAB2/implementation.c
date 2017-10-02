@@ -4,6 +4,7 @@
 #include "utilities.h"  // DO NOT REMOVE this line
 #include "implementation_reference.h"   // DO NOT REMOVE this line
 
+
 // GLOBAL VARIABLES
 /***********************************************************************************************************************/
 // width and height of this image, globally visible
@@ -387,6 +388,170 @@ void print_team_info(){
  ***********************************************************************************************************************
  *
  **********************************************************************************************************************/
+
+typedef enum tagState {
+    INIT=0, W=1, A=2, S=3, D=4, ROTATE=5, MIRROR=6
+} State;
+
+typedef struct tagIteration {
+    unsigned int W, A, S, D, CW, CCW, MX, MY;
+} Iteration;
+
+void process(unsigned char *frame_buffer, unsigned char *frame_rendered, Iteration *iter, State state)
+{
+    switch (state) {
+        case W: {
+            if (g_rendered) {
+                processMoveUp(frame_rendered, frame_buffer, iter->W);
+            } else {
+                processMoveUp(frame_buffer, frame_rendered, iter->W);
+            }
+            iter->W = 0;
+            break;
+        }
+        case A: {
+            if (g_rendered) {
+                processMoveLeft(frame_rendered, frame_buffer, iter->A);
+            } else {
+                processMoveLeft(frame_buffer, frame_rendered, iter->A);
+            }
+            iter->A = 0;
+            break;
+        }
+        case S: {
+            if (g_rendered) {
+                processMoveDown(frame_rendered, frame_buffer, iter->S);
+            } else {
+                processMoveDown(frame_buffer, frame_rendered, iter->S);
+            }
+            iter->S = 0;
+            break;
+        }
+        case D: {
+            if (g_rendered) {
+                processMoveRight(frame_rendered, frame_buffer, iter->D);
+            } else {
+                processMoveRight(frame_buffer, frame_rendered, iter->D);
+            }
+            iter->D = 0;
+            break;
+        }
+        case ROTATE: {
+            int cw = iter->CW - iter->CCW;
+            if (cw > 0) { 
+                if (g_rendered) {   
+                    processRotateCW(frame_rendered, frame_buffer, cw);
+                } else {
+                    processRotateCW(frame_buffer, frame_rendered, cw);
+                }
+            } else if (cw < 0) { 
+                if (g_rendered) {   
+                    processRotateCCW(frame_rendered, frame_buffer, -cw);
+                } else {
+                    processRotateCCW(frame_buffer, frame_rendered, -cw);
+                }
+            }
+            iter->CW = 0;
+            iter->CCW = 0;
+            break;
+        }
+        case MIRROR: {
+            if (iter->MX % 2) { 
+                if (g_rendered) {   
+                    processMirrorX(frame_rendered, frame_buffer, iter->MX);
+                } else {
+                    processMirrorX(frame_buffer, frame_rendered, iter->MX);
+                }
+            }
+            if (iter->MY % 2) { 
+                if (g_rendered) {   
+                    processMirrorY(frame_rendered, frame_buffer, iter->MY);
+                } else {
+                    processMirrorY(frame_buffer, frame_rendered, iter->MY);
+                }
+            }
+            iter->MX = 0;
+            iter->MY = 0;
+            break;
+        }
+        default: fprintf(stderr, "processing unknown state\n");
+    }
+}
+
+State state_transfer(const char *key, const int value, Iteration *iter) 
+{
+    if (!strcmp(key, "W")) {
+        if (value > 0) {
+            iter->W += value;
+            return W;
+        } else if (value < 0) {
+            iter->S += -value;
+            return S;
+        } else {
+            return INIT;
+        }
+    } else if (!strcmp(key, "A")) {
+        if (value > 0) {
+            iter->A += value;
+            return A;
+        } else if (value < 0) {
+            iter->D += -value;
+            return D;
+        } else {
+            return INIT;
+        }
+    } else if (!strcmp(key, "S")) {
+        if (value > 0) {
+            iter->S += value;
+            return S;
+        } else if (value < 0) {
+            iter->W += -value;
+            return W;
+        } else {
+            return INIT;
+        }
+    } else if (!strcmp(key, "D")) {
+        if (value > 0) {
+            iter->D += value;
+            return D;
+        } else if (value < 0) {
+            iter->A += -value;
+            return A;
+        } else {
+            return INIT;
+        }
+    } else if (!strcmp(key, "CW")) {
+        if (value > 0) {
+            iter->CW += value;
+            return ROTATE;
+        } else if (value < 0) {
+            iter->CCW += -value;
+            return ROTATE;
+        } else {
+            return INIT;
+        }
+    } else if (!strcmp(key, "CCW")) {
+        if (value > 0) {
+            iter->CCW += value;
+            return ROTATE;
+        } else if (value < 0) {
+            iter->CW += -value;
+            return ROTATE;
+        } else {
+            return INIT;
+        }
+    } else if (!strcmp(key, "MX")) {
+        iter->MX += 1;
+        return MIRROR;
+    } else if (!strcmp(key, "MY")) {
+        iter->MY += 1;
+        return MIRROR;
+    } else {
+        printf("Invalid key %s", key);
+        return -1;
+    }
+}
+
 void implementation_driver(struct kv *sensor_values, int sensor_values_count, unsigned char *frame_buffer,
                            unsigned int width, unsigned int height, bool grading_mode) {
 	// assign global variables
@@ -395,77 +560,41 @@ void implementation_driver(struct kv *sensor_values, int sensor_values_count, un
 
     // allocate memory for temporary image buffer
     unsigned char *frame_rendered = allocateFrame(width, height);
+	int processed_frames = 0;
+
+	State state = INIT;
+	Iteration iter;
+    memset(&iter, 0, sizeof(Iteration));	
     
-    int processed_frames = 0;
+    char *key;
+    int value;
+    State next_state = INIT;
     for (int sensorValueIdx = 0; sensorValueIdx < sensor_values_count; sensorValueIdx++) {
-//        printf("Processing sensor value #%d: %s, %d\n", sensorValueIdx, sensor_values[sensorValueIdx].key,
-//               sensor_values[sensorValueIdx].value);
-        if (!strcmp(sensor_values[sensorValueIdx].key, "W")) {
-            if (g_rendered) {
-                processMoveUp(frame_rendered, frame_buffer, sensor_values[sensorValueIdx].value);
-            } else {
-                processMoveUp(frame_buffer, frame_rendered, sensor_values[sensorValueIdx].value);
-            }
-//          printBMP(width, height, frame_buffer);
-        } else if (!strcmp(sensor_values[sensorValueIdx].key, "A")) {
-            if (g_rendered) {
-                processMoveLeft(frame_rendered, frame_buffer, sensor_values[sensorValueIdx].value);
-            } else {
-                processMoveLeft(frame_buffer, frame_rendered, sensor_values[sensorValueIdx].value);
-            }
-//            printBMP(width, height, frame_buffer);
-        } else if (!strcmp(sensor_values[sensorValueIdx].key, "S")) {
-            if (g_rendered) {
-                processMoveDown(frame_rendered, frame_buffer, sensor_values[sensorValueIdx].value);
-            } else {
-                processMoveDown(frame_buffer, frame_rendered, sensor_values[sensorValueIdx].value);
-            }
-//            printBMP(width, height, frame_buffer);
-        } else if (!strcmp(sensor_values[sensorValueIdx].key, "D")) {
-            if (g_rendered) {
-                processMoveRight(frame_rendered, frame_buffer, sensor_values[sensorValueIdx].value);
-            } else {
-                processMoveRight(frame_buffer, frame_rendered, sensor_values[sensorValueIdx].value);
-            }
-//            printBMP(width, height, frame_buffer);
-        } else if (!strcmp(sensor_values[sensorValueIdx].key, "CW")) {
-            if (g_rendered) {
-                processRotateCW(frame_rendered, frame_buffer, sensor_values[sensorValueIdx].value);
-            } else {
-                processRotateCW(frame_buffer, frame_rendered, sensor_values[sensorValueIdx].value);
-            }
-//            printBMP(width, height, frame_buffer);
-        } else if (!strcmp(sensor_values[sensorValueIdx].key, "CCW")) {
-            if (g_rendered) {
-                processRotateCCW(frame_rendered, frame_buffer, sensor_values[sensorValueIdx].value);
-            } else {
-                processRotateCCW(frame_buffer, frame_rendered, sensor_values[sensorValueIdx].value);
-            }
-//            printBMP(width, height, frame_buffer);
-        } else if (!strcmp(sensor_values[sensorValueIdx].key, "MX")) {
-            if (g_rendered) {
-                processMirrorX(frame_rendered, frame_buffer, sensor_values[sensorValueIdx].value);
-            } else {
-                processMirrorX(frame_buffer, frame_rendered, sensor_values[sensorValueIdx].value);
-            }
-//            printBMP(width, height, frame_buffer);
-        } else if (!strcmp(sensor_values[sensorValueIdx].key, "MY")) {
-            if (g_rendered) {
-                processMirrorY(frame_rendered, frame_buffer, sensor_values[sensorValueIdx].value);
-            } else {
-                processMirrorY(frame_buffer, frame_rendered, sensor_values[sensorValueIdx].value);
-            }
-//            printBMP(width, height, frame_buffer);
+    //      printf("Processing sensor value #%d: %s, %d\n", sensorValueIdx, sensor_values[sensorValueIdx].key,
+    //               sensor_values[sensorValueIdx].value);
+        key = sensor_values[sensorValueIdx].key;
+        value = sensor_values[sensorValueIdx].value;
+        next_state = state_transfer(key, value, &iter);
+        if (state != INIT && state != next_state) {
+            process(frame_buffer, frame_rendered, &iter, state);
         }
-        processed_frames += 1;
-        //if (processed_frames % 25 == 0) {
-		if (processed_frames % 4 == 0) {
-            verifyFrame(frame_buffer, width, height, grading_mode);
+        state = next_state;
+        
+	    processed_frames += 1;
+        if (processed_frames % 25 == 0) {
+            process(frame_buffer, frame_rendered, &iter, state);
+            if (g_rendered) {               
+                verifyFrame(frame_rendered, width, height, grading_mode);
+            } else {
+                verifyFrame(frame_buffer, width, height, grading_mode);
+            }
         }
     }
+    process(frame_buffer, frame_rendered, &iter, state);
     if (g_rendered) {
         frame_buffer = copyFrame(frame_rendered, frame_buffer, g_width, g_height);
     }
+    
     // free temporary image buffer
     deallocateFrame(frame_rendered);
     return;
