@@ -4,15 +4,13 @@
 #include "utilities.h"  // DO NOT REMOVE this line
 #include "implementation_reference.h"   // DO NOT REMOVE this line
 
-
 // GLOBAL VARIABLES
 /***********************************************************************************************************************/
 // width and height of this image, globally visible
 unsigned int g_width, g_height;
 // global index for double-buffering
 int g_rendered = 0;
-// tiling blocksize
-const int T = 8;
+#define BLANK 0xFF
 /**********************************************************************************************************************/
 
 // FUNCTION DECLARATIONS
@@ -30,9 +28,6 @@ void processMirrorY(unsigned char *buffer_frame, unsigned char *rendered_frame, 
 void rotateCW90(unsigned char *buffer_frame, unsigned char *rendered_frame);
 void rotateCCW90(unsigned char *buffer_frame, unsigned char *rendered_frame);
 void rotateCW180(unsigned char *buffer_frame, unsigned char *rendered_frame);
-#ifndef min
-#define min(a,b) ((a) < (b) ? (a) : (b))
-#endif
 //----------------------------------------------------------------------------------------------------------------------
 /***********************************************************************************************************************/
 
@@ -52,29 +47,10 @@ void processMoveUp(unsigned char *buffer_frame, unsigned char *rendered_frame, i
         return;
     }  
 
-    memset(rendered_frame, -1, 3 * g_width * g_height);
-
-    // store shifted pixels to temporary buffer
-    for (int row = 0; row < (g_height - offset); row++) {
-        for (int column = 0; column < g_width; column++) {
-            int position_buffer_frame = (row + offset) * g_width * 3 + column * 3;
-            int position_rendered_frame = -1;
-            if (buffer_frame[position_buffer_frame] != 255) {
-                position_rendered_frame = row * g_width * 3 + column * 3;
-                rendered_frame[position_rendered_frame] = buffer_frame[position_buffer_frame];
-            }
-            if (buffer_frame[position_buffer_frame + 1] != 255) { 
-                if (position_rendered_frame == -1) position_rendered_frame = row * g_width * 3 + column * 3;
-                rendered_frame[position_rendered_frame + 1] = buffer_frame[position_buffer_frame + 1];
-            }
-            if (buffer_frame[position_buffer_frame + 2] != 255) {
-                if (position_rendered_frame == -1) position_rendered_frame = row * g_width * 3 + column * 3;
-                rendered_frame[position_rendered_frame + 2] = buffer_frame[position_buffer_frame + 2];
-            }
-        }
-    }
-
-    g_rendered = !g_rendered;
+	int len = 3 * g_width * g_height;
+	int gap = offset * g_width * 3;
+	memcpy(buffer_frame, buffer_frame + gap, len - gap);
+	memset(buffer_frame + len - gap, BLANK, gap);
 }
 
 /***********************************************************************************************************************
@@ -92,30 +68,12 @@ void processMoveRight(unsigned char *buffer_frame, unsigned char *rendered_frame
         processMoveLeft(buffer_frame, rendered_frame, -offset);
         return;
     }
-
-    memset(rendered_frame, -1, 3 * g_width * g_height);
-
-    // store shifted pixels to temporary buffer
-    for (int row = 0; row < g_height; row++) {
-        for (int column = offset; column < g_width; column++) {
-            int position_buffer_frame = row * g_width * 3 + (column - offset) * 3;
-            int position_rendered_frame = -1;
-            if (buffer_frame[position_buffer_frame] != 255) {
-                position_rendered_frame = row * g_width * 3 + column * 3;
-                rendered_frame[position_rendered_frame] = buffer_frame[position_buffer_frame];
-            }
-            if (buffer_frame[position_buffer_frame + 1] != 255) {
-                if (position_rendered_frame == -1) position_rendered_frame = row * g_width * 3 + column * 3;
-                rendered_frame[position_rendered_frame + 1] = buffer_frame[position_buffer_frame + 1];
-            }
-            if (buffer_frame[position_buffer_frame + 2] != 255) {
-                if (position_rendered_frame == -1) position_rendered_frame = row * g_width * 3 + column * 3;
-                rendered_frame[position_rendered_frame + 2] = buffer_frame[position_buffer_frame + 2];
-            }
-        }
+	int gap = offset * 3;
+	int len = g_width * 3;
+	memcpy(buffer_frame + gap, buffer_frame, len * g_height - gap);
+    for (int row = 0; row < g_height; row++) {	
+		memset(buffer_frame + row * len, BLANK, gap);
     }
-
-    g_rendered = !g_rendered;
 }
 
 /***********************************************************************************************************************
@@ -133,31 +91,10 @@ void processMoveDown(unsigned char *buffer_frame, unsigned char *rendered_frame,
         processMoveUp(buffer_frame, rendered_frame, -offset);
         return;
     }
-
-    memset(rendered_frame, -1, 3 * g_width * g_height);
-
-    // store shifted pixels to temporary buffer
-    for (int row = offset; row < g_height; row++) {
-        for (int column = 0; column < g_width; column++) {
-            int position_rendered_frame = row * g_width * 3 + column * 3;
-            int position_buffer_frame = -1;
-
-            if (buffer_frame[position_buffer_frame] != 255) {
-                position_buffer_frame = (row - offset) * g_width * 3 + column * 3;
-                rendered_frame[position_rendered_frame] = buffer_frame[position_buffer_frame];
-            }
-            if (buffer_frame[position_buffer_frame + 1] != 255) {
-                if (position_buffer_frame == -1) position_buffer_frame = (row - offset) * g_width * 3 + column * 3;
-                rendered_frame[position_rendered_frame + 1] = buffer_frame[position_buffer_frame + 1];
-            }
-            if (buffer_frame[position_buffer_frame + 2] != 255) {
-                if (position_buffer_frame == -1) position_buffer_frame = (row - offset) * g_width * 3 + column * 3;
-                rendered_frame[position_rendered_frame + 2] = buffer_frame[position_buffer_frame + 2];
-            }
-        }
-    }
-
-    g_rendered = !g_rendered;
+	int gap = offset * g_width * 3;
+	int len = g_height * g_width * 3;
+	memcpy(buffer_frame + gap, buffer_frame, len - gap);
+	memset(buffer_frame, BLANK, gap);
 }
 
 /***********************************************************************************************************************
@@ -176,106 +113,66 @@ void processMoveLeft(unsigned char *buffer_frame, unsigned char *rendered_frame,
         return;
     }
 
-    memset(rendered_frame, -1, 3 * g_width * g_height);
-
-    // store shifted pixels to temporary buffer
+	int gap = offset * 3;
+	int len = g_width * 3;
+	memcpy(buffer_frame, buffer_frame + gap, len * g_height - gap);
     for (int row = 0; row < g_height; row++) {
-        for (int column = 0; column < (g_width - offset); column++) {
-            int position_rendered_frame = row * g_width * 3 + column * 3;
-            int position_buffer_frame = -1;
-
-            if (buffer_frame[position_buffer_frame] != 255) {
-                position_buffer_frame = row * g_width * 3 + (column + offset) * 3;
-                rendered_frame[position_rendered_frame] = buffer_frame[position_buffer_frame];
-            }
-            if (buffer_frame[position_buffer_frame + 1] != 255) {
-                if (position_buffer_frame == -1) position_buffer_frame = row * g_width * 3 + (column + offset) * 3;
-                rendered_frame[position_rendered_frame + 1] = buffer_frame[position_buffer_frame + 1];
-            }
-            if (buffer_frame[position_buffer_frame + 2] != 255) {
-                if (position_buffer_frame == -1) position_buffer_frame = row * g_width * 3 + (column + offset) * 3;
-                rendered_frame[position_rendered_frame + 2] = buffer_frame[position_buffer_frame + 2];
-            }
-        }
+		memset(buffer_frame + row * len + len - gap, BLANK, gap);
     }
-
-    g_rendered = !g_rendered;
 }
 
 void rotateCW90(unsigned char *buffer_frame, unsigned char *rendered_frame) {
+    // store shifted pixels to temporary buffer
     int render_column = g_width - 1;
     int render_row = 0;
-
-    for (int row = 0; row < g_width; row+=T) {
-        int row_bound = min(row + T, g_width);
-        for (int column = 0; column < g_height; column+=T) {
-            int column_bound = min(column + T, g_height);
-            for (int row_t = row; row_t < row_bound; row_t++) {
-                for (int column_t = column; column_t < column_bound; column_t++) {
-                    int position_frame_buffer = row_t * g_width * 3 + column_t * 3;
-                    int position_rendered_frame = render_row * g_width * 3 + render_column * 3;
-                    rendered_frame[position_rendered_frame] = buffer_frame[position_frame_buffer];
-                    rendered_frame[position_rendered_frame + 1] = buffer_frame[position_frame_buffer + 1];
-                    rendered_frame[position_rendered_frame + 2] = buffer_frame[position_frame_buffer + 2];
-                    render_row += 1;
-                }   
-                render_column -= 1; 
-                render_row = column;    
-            }
-            render_column = g_width - row - 1;
-            render_row = column_bound;
+    for (int row = 0; row < g_width; row++) {
+        for (int column = 0; column < g_height; column++) {
+            int position_frame_buffer = row * g_width * 3 + column * 3;
+            rendered_frame[render_row * g_width * 3 + render_column * 3] = buffer_frame[position_frame_buffer];
+            rendered_frame[render_row * g_width * 3 + render_column * 3 + 1] = buffer_frame[position_frame_buffer + 1];
+            rendered_frame[render_row * g_width * 3 + render_column * 3 + 2] = buffer_frame[position_frame_buffer + 2];
+            render_row += 1;
         }
-        render_column = g_width - row_bound - 1;
         render_row = 0;
+        render_column -= 1;
     }
+
     g_rendered = !g_rendered;
 }
 
 void rotateCCW90(unsigned char *buffer_frame, unsigned char *rendered_frame) {
+	// TODO: to be verified
     int render_column = 0;
     int render_row = g_height - 1;
-
-    for (int row = 0; row < g_width; row+=T) {
-        int row_bound = min(row + T, g_width);
-        for (int column = 0; column < g_height; column+=T) {
-            int column_bound = min(column + T, g_height);
-            for (int row_t = row; row_t < row_bound; row_t++) {
-                for (int column_t = column; column_t < column_bound; column_t++) {
-                    int position_frame_buffer = row_t * g_width * 3 + column_t * 3;
-                    int position_rendered_frame = render_row * g_width * 3 + render_column * 3;
-                    rendered_frame[position_rendered_frame] = buffer_frame[position_frame_buffer];
-                    rendered_frame[position_rendered_frame + 1] = buffer_frame[position_frame_buffer + 1];
-                    rendered_frame[position_rendered_frame + 2] = buffer_frame[position_frame_buffer + 2];
-                    render_row -= 1;
-                }
-                render_column += 1;
-                render_row = g_height - column - 1;               
-            }
-            render_column = row;
-            render_row = g_height - column_bound - 1;
+    for (int row = 0; row < g_width; row++) {
+        for (int column = 0; column < g_height; column++) {
+            int position_frame_buffer = row * g_width * 3 + column * 3;
+            rendered_frame[render_row * g_width * 3 + render_column * 3] = buffer_frame[position_frame_buffer];
+            rendered_frame[render_row * g_width * 3 + render_column * 3 + 1] = buffer_frame[position_frame_buffer + 1];
+            rendered_frame[render_row * g_width * 3 + render_column * 3 + 2] = buffer_frame[position_frame_buffer + 2];
+            render_row -= 1;
         }
-        render_column = row_bound;
         render_row = g_height - 1;
+        render_column += 1;
     }
 
     g_rendered = !g_rendered;
 }
 
 void rotateCW180(unsigned char *buffer_frame, unsigned char *rendered_frame) {
-    for (int row = 0; row < g_width; row+=T) {
-        int row_bound = min(row + T, g_width);
-        for (int column = 0; column < g_height; column+=T) {
-            int column_bound = min(column + T, g_height);
-            for (int row_t = row; row_t < row_bound; row_t++) {
-                for (int column_t = column; column_t < column_bound; column_t++) {
-                    int position_frame_buffer = row_t * g_width * 3 + column_t * 3;
-                    int position_rendered_frame = (g_height - row_t - 1) * g_width * 3 + (g_width - column_t - 1) * 3;
-                    rendered_frame[position_rendered_frame] = buffer_frame[position_frame_buffer];
-                    rendered_frame[position_rendered_frame + 1] = buffer_frame[position_frame_buffer + 1];
-                    rendered_frame[position_rendered_frame + 2] = buffer_frame[position_frame_buffer + 2];
-                }
-            }
+	// TODO: to be verified
+	int render_column = g_width - 1;
+    int render_row = g_height - 1;
+    for (int row = 0; row < g_width; row++) {
+        for (int column = 0; column < g_height; column++) {
+            int position_frame_buffer = row * g_width * 3 + column * 3;
+            rendered_frame[render_row * g_width * 3 + render_column * 3] = buffer_frame[position_frame_buffer];
+            rendered_frame[render_row * g_width * 3 + render_column * 3 + 1] = buffer_frame[position_frame_buffer + 1];
+            rendered_frame[render_row * g_width * 3 + render_column * 3 + 2] = buffer_frame[position_frame_buffer + 2];
+            render_column -= 1;
         }
+        render_row -= 1;
+        render_column = g_width - 1;
     }
 
     g_rendered = !g_rendered;
@@ -421,7 +318,6 @@ void print_team_info(){
  ***********************************************************************************************************************
  *
  **********************************************************************************************************************/
-
 typedef enum tagState {
     INIT=0, W=1, A=2, S=3, D=4, ROTATE=5, MIRROR=6
 } State;
