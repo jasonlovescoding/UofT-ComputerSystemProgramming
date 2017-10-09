@@ -18,6 +18,8 @@ int g_end;
 int g_upperright;
 // the lower-left corner of this image
 int g_lowerleft;
+// tiling blocksize
+const int T = 16;
 #define BLANK 0xFF
 #ifndef MAX
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
@@ -190,16 +192,24 @@ void rotateCW90(unsigned char *buffer_frame, unsigned char *rendered_frame) {
     int render_column, render_row;
     int rowbyte = 3 * g_width;
 
-    for (int row = g_start / rowbyte; row <= g_end / rowbyte; row++) {
-        render_column = g_width - row - 1;
-        for (int column = (g_start % rowbyte) / 3; column <= (g_end % rowbyte) / 3; column++) {
-            render_row = column;
-            int position_frame_buffer = row * g_width * 3 + column * 3;
-            rendered_frame[render_row * g_width * 3 + render_column * 3] = buffer_frame[position_frame_buffer];
-            rendered_frame[render_row * g_width * 3 + render_column * 3 + 1] = buffer_frame[position_frame_buffer + 1];
-            rendered_frame[render_row * g_width * 3 + render_column * 3 + 2] = buffer_frame[position_frame_buffer + 2];
+    for (int row = g_start / rowbyte; row <= g_end / rowbyte; row+=T) {
+        int tmp0 = (g_end % rowbyte) / 3;
+        for (int column = (g_start % rowbyte) / 3; column <= tmp0; column+=T) {
+            int tmp1 = MIN(row + T - 1, g_end / rowbyte);
+            for (int r = row; r <= tmp1; r++) {
+                render_column = g_width - r - 1;
+                int tmp2 = MIN(column + T - 1, (g_end % rowbyte) / 3);
+                for (int c = column; c <= tmp2; c++) {
+                    render_row = c;
+                    int position_frame_buffer = r * g_width * 3 + c * 3;
+                    rendered_frame[render_row * g_width * 3 + render_column * 3] = buffer_frame[position_frame_buffer];
+                    rendered_frame[render_row * g_width * 3 + render_column * 3 + 1] = buffer_frame[position_frame_buffer + 1];
+                    rendered_frame[render_row * g_width * 3 + render_column * 3 + 2] = buffer_frame[position_frame_buffer + 2];
+                }
+            }
         }
     }
+
     memset(buffer_frame + g_start, BLANK, g_end - g_start);
     //printf("g_start= %d, g_end= %d, g_ur= %d, g_ll= %d\n", g_start, g_end - 3, g_upperright, g_lowerleft);
     g_start = indexCW90(g_start);
@@ -230,14 +240,21 @@ void rotateCCW90(unsigned char *buffer_frame, unsigned char *rendered_frame) {
     // printf("CCW90\n");
     int render_column, render_row;
     int rowbyte = g_width * 3;
-    for (int row = g_start / rowbyte; row <= g_end / rowbyte; row++) {
-        render_column = row;
-        for (int column = (g_start % rowbyte) / 3; column <= (g_end % rowbyte) / 3; column++) {
-            render_row = g_width - column - 1;
-            int position_frame_buffer = row * g_width * 3 + column * 3;
-            rendered_frame[render_row * g_width * 3 + render_column * 3] = buffer_frame[position_frame_buffer];
-            rendered_frame[render_row * g_width * 3 + render_column * 3 + 1] = buffer_frame[position_frame_buffer + 1];
-            rendered_frame[render_row * g_width * 3 + render_column * 3 + 2] = buffer_frame[position_frame_buffer + 2];
+    for (int row = g_start / rowbyte; row <= g_end / rowbyte; row+=T) {
+        int tmp0 = (g_end % rowbyte) / 3;
+        for (int column = (g_start % rowbyte) / 3; column <= tmp0; column+=T) {
+            int tmp1 = MIN(row + T - 1, g_end / rowbyte);
+            for (int r = row; r <= tmp1; r++) {
+                render_column = r;
+                int tmp2 = MIN(column + T - 1, (g_end % rowbyte) / 3);
+                for (int c = column; c <= tmp2; c++) {
+                    render_row = g_width - c - 1;
+                    int position_frame_buffer = r * g_width * 3 + c * 3;
+                    rendered_frame[render_row * g_width * 3 + render_column * 3] = buffer_frame[position_frame_buffer];
+                    rendered_frame[render_row * g_width * 3 + render_column * 3 + 1] = buffer_frame[position_frame_buffer + 1];
+                    rendered_frame[render_row * g_width * 3 + render_column * 3 + 2] = buffer_frame[position_frame_buffer + 2];
+                }
+            }
         }
     }
     memset(buffer_frame + g_start, BLANK, g_end - g_start);
@@ -268,14 +285,21 @@ int indexCW180(int idx) {
 void rotateCW180(unsigned char *buffer_frame, unsigned char *rendered_frame) {
     int render_column, render_row;
     int rowbyte = g_width * 3;
-    for (int row = g_start / rowbyte; row <= g_end / rowbyte; row++) {
-        render_row = g_height - row - 1;
-        for (int column = (g_start % rowbyte) / 3; column <= (g_end % rowbyte) / 3; column++) {
-            render_column = g_width - column - 1;
-            int position_frame_buffer = row * g_width * 3 + column * 3;
-            rendered_frame[render_row * g_width * 3 + render_column * 3] = buffer_frame[position_frame_buffer];
-            rendered_frame[render_row * g_width * 3 + render_column * 3 + 1] = buffer_frame[position_frame_buffer + 1];
-            rendered_frame[render_row * g_width * 3 + render_column * 3 + 2] = buffer_frame[position_frame_buffer + 2];
+    for (int row = g_start / rowbyte; row <= g_end / rowbyte; row+=T) {
+        int tmp0 = (g_end % rowbyte) / 3;
+        for (int column = (g_start % rowbyte) / 3; column <= tmp0; column+=T) {
+            int tmp1 = MIN(row + T - 1, g_end / rowbyte);
+            for (int r = row; r <= tmp1; r++) {
+                render_row = g_height - r - 1;
+                int tmp2 = MIN(column + T - 1, (g_end % rowbyte) / 3);
+                for (int c = column; c <= tmp2; c++) {
+                    render_column = g_width - c - 1;
+                    int position_frame_buffer = r * g_width * 3 + c * 3;
+                    rendered_frame[render_row * g_width * 3 + render_column * 3] = buffer_frame[position_frame_buffer];
+                    rendered_frame[render_row * g_width * 3 + render_column * 3 + 1] = buffer_frame[position_frame_buffer + 1];
+                    rendered_frame[render_row * g_width * 3 + render_column * 3 + 2] = buffer_frame[position_frame_buffer + 2];
+                }
+            }
         }
     }
     memset(buffer_frame + g_start, BLANK, g_end - g_start);
@@ -408,13 +432,20 @@ void processMirrorY(unsigned char *buffer_frame, unsigned char *rendered_frame, 
     //printf("MY\n");
     int rowbyte = g_width * 3;
     // store shifted pixels to temporary buffer
-    for (int row = g_start / rowbyte; row <= g_end / rowbyte; row++) {
-        for (int column = (g_start % rowbyte) / 3; column <= (g_end % rowbyte) / 3; column++) {
-            int position_buffer_frame = row * g_height * 3 + column * 3;
-            int position_rendered_frame = row * g_height * 3 + (g_width - column - 1) * 3;
-            rendered_frame[position_rendered_frame] = buffer_frame[position_buffer_frame];
-            rendered_frame[position_rendered_frame + 1] = buffer_frame[position_buffer_frame + 1];
-            rendered_frame[position_rendered_frame + 2] = buffer_frame[position_buffer_frame + 2];
+    for (int row = g_start / rowbyte; row <= g_end / rowbyte; row+=T) {
+        for (int column = (g_start % rowbyte) / 3; column <= (g_end % rowbyte) / 3; column+=T) {
+            int tmp1 = MIN(row + T - 1, g_end / rowbyte);
+            for (int r = row; r <= tmp1; r++) {
+                int tmp2 = MIN(column + T - 1, (g_end % rowbyte) / 3);
+                for (int c = column; c <= tmp2; c++) {
+                    int position_buffer_frame = r * g_height * 3 + c * 3;
+                    int position_rendered_frame = r * g_height * 3 + (g_width - c - 1) * 3;
+                    rendered_frame[position_rendered_frame] = buffer_frame[position_buffer_frame];
+                    rendered_frame[position_rendered_frame + 1] = buffer_frame[position_buffer_frame + 1];
+                    rendered_frame[position_rendered_frame + 2] = buffer_frame[position_buffer_frame + 2];
+                }
+            }
+            
         }
     }
     memset(buffer_frame + g_start, BLANK, g_end - g_start);
