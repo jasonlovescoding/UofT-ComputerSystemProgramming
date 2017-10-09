@@ -10,7 +10,21 @@
 unsigned int g_width, g_height;
 // global index for double-buffering
 int g_rendered = 0;
+// the first non-blank pixel of this image
+int g_start;
+// the last non-blank pixel of this image
+int g_end;
+// the upper-right corner of this image
+int g_upperright;
+// the lower-left corner of this image
+int g_lowerleft;
 #define BLANK 0xFF
+#ifndef MAX
+#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
+#endif
+#ifndef MIN
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+#endif
 /**********************************************************************************************************************/
 
 // FUNCTION DECLARATIONS
@@ -46,11 +60,15 @@ void processMoveUp(unsigned char *buffer_frame, unsigned char *rendered_frame, i
         processMoveDown(buffer_frame, rendered_frame, -offset);
         return;
     }  
-
-	int len = 3 * g_width * g_height;
-	int gap = offset * g_width * 3;
-	memcpy(buffer_frame, buffer_frame + gap, len - gap);
-	memset(buffer_frame + len - gap, BLANK, gap);
+    //printf("UP\n");
+    int gap = offset * g_width * 3;
+    //printf("g_start= %d, g_end= %d, gap= %d, len= %d\n", g_start, g_end, gap, g_width * g_height * 3);
+    memmove(buffer_frame + g_start - gap, buffer_frame + g_start, g_end - g_start);
+    memset(buffer_frame + g_end - gap, BLANK, gap);
+    g_start -= gap;
+    g_end -= gap;
+    g_upperright -= gap;
+    g_lowerleft -= gap;
 }
 
 /***********************************************************************************************************************
@@ -68,12 +86,18 @@ void processMoveRight(unsigned char *buffer_frame, unsigned char *rendered_frame
         processMoveLeft(buffer_frame, rendered_frame, -offset);
         return;
     }
-	int gap = offset * 3;
-	int len = g_width * 3;
-	memcpy(buffer_frame + gap, buffer_frame, len * g_height - gap);
-    for (int row = 0; row < g_height; row++) {	
-		memset(buffer_frame + row * len, BLANK, gap);
+    int gap = offset * 3;
+    int rowbyte = g_width * 3;
+    memmove(buffer_frame + g_start + gap, buffer_frame + g_start, g_end - g_start);
+    if ((g_upperright % rowbyte) + gap > rowbyte) {
+        for (int row = 0; row < g_height; row++) {	
+            memset(buffer_frame + row * rowbyte, BLANK, gap);
+        }
     }
+    g_start += gap;
+    g_end += gap;
+    g_upperright += gap;
+    g_lowerleft += gap;
 }
 
 /***********************************************************************************************************************
@@ -91,10 +115,14 @@ void processMoveDown(unsigned char *buffer_frame, unsigned char *rendered_frame,
         processMoveUp(buffer_frame, rendered_frame, -offset);
         return;
     }
-	int gap = offset * g_width * 3;
-	int len = g_height * g_width * 3;
-	memcpy(buffer_frame + gap, buffer_frame, len - gap);
-	memset(buffer_frame, BLANK, gap);
+    //printf("DOWN\n");
+    int gap = offset * g_width * 3;
+    memmove(buffer_frame + g_start + gap, buffer_frame + g_start, g_end - g_start);
+    memset(buffer_frame + g_start, BLANK, gap);
+    g_start += gap;
+    g_end += gap;
+    g_upperright += gap;
+    g_lowerleft += gap;
 }
 
 /***********************************************************************************************************************
@@ -107,73 +135,140 @@ void processMoveDown(unsigned char *buffer_frame, unsigned char *rendered_frame,
  * Note2: You can assume the object will never be moved off the screen
  **********************************************************************************************************************/
 void processMoveLeft(unsigned char *buffer_frame, unsigned char *rendered_frame, int offset) {
+    //printf("LEFT\n");
     // handle negative offsets
     if (offset < 0){
         processMoveRight(buffer_frame, rendered_frame, -offset);
         return;
     }
 
-	int gap = offset * 3;
-	int len = g_width * 3;
-	memcpy(buffer_frame, buffer_frame + gap, len * g_height - gap);
-    for (int row = 0; row < g_height; row++) {
-		memset(buffer_frame + row * len + len - gap, BLANK, gap);
+    int gap = offset * 3;
+    int rowbyte = g_width * 3;
+    memmove(buffer_frame + g_start - gap, buffer_frame + g_start, g_end - g_start);
+    if ((g_lowerleft % rowbyte) - gap < 0) {
+        for (int row = 0; row < g_height; row++) {
+            memset(buffer_frame + row * rowbyte + rowbyte - gap, BLANK, gap);
+        }
     }
+    g_start -= gap;
+    g_end -= gap;
+    g_upperright -= gap;
+    g_lowerleft -= gap;
+}
+
+int indexCW90(int idx) {
+    int x, y;
+    int rowbyte = g_width * 3;
+    x = idx / rowbyte;
+    y = (idx % rowbyte) / 3;
+    return y * rowbyte + (g_width - x - 1) * 3;
 }
 
 void rotateCW90(unsigned char *buffer_frame, unsigned char *rendered_frame) {
-    // store shifted pixels to temporary buffer
-    int render_column = g_width - 1;
-    int render_row = 0;
-    for (int row = 0; row < g_width; row++) {
-        for (int column = 0; column < g_height; column++) {
+    //printf("CW90\n");
+    int render_column, render_row;
+    int rowbyte = 3 * g_width;
+    for (int row = g_start / rowbyte; row <= g_end / rowbyte; row++) {
+        render_column = g_width - row - 1;
+        for (int column = (g_start % rowbyte) / 3; column <= (g_end % rowbyte) / 3; column++) {
+            render_row = column;
             int position_frame_buffer = row * g_width * 3 + column * 3;
             rendered_frame[render_row * g_width * 3 + render_column * 3] = buffer_frame[position_frame_buffer];
             rendered_frame[render_row * g_width * 3 + render_column * 3 + 1] = buffer_frame[position_frame_buffer + 1];
             rendered_frame[render_row * g_width * 3 + render_column * 3 + 2] = buffer_frame[position_frame_buffer + 2];
-            render_row += 1;
         }
-        render_row = 0;
-        render_column -= 1;
     }
+    memset(buffer_frame + g_start, BLANK, g_end - g_start);
+    //printf("g_start= %d, g_end= %d, g_ur= %d, g_ll= %d\n", g_start, g_end - 3, g_upperright, g_lowerleft);
+    g_start = indexCW90(g_start);
+    g_end = indexCW90(g_end - 3);
+    g_upperright = indexCW90(g_upperright);
+    g_lowerleft = indexCW90(g_lowerleft);
+    
+    int tmp = g_start;
+    g_start = g_lowerleft;
+    g_lowerleft = g_end;
+    g_end = g_upperright;
+    g_upperright = tmp;
+    g_end += 3;
+    //printf("g_start= %d, g_end= %d, g_ur= %d, g_ll= %d\n", g_start, g_end - 3, g_upperright, g_lowerleft);
 
     g_rendered = !g_rendered;
+}
+
+int indexCCW90(int idx) {
+    int x, y;
+    int rowbyte = g_width * 3;
+    x = idx / rowbyte;
+    y = (idx % rowbyte) / 3;
+    return (g_height - y - 1) * rowbyte + x * 3;
 }
 
 void rotateCCW90(unsigned char *buffer_frame, unsigned char *rendered_frame) {
-	// TODO: to be verified
-    int render_column = 0;
-    int render_row = g_height - 1;
-    for (int row = 0; row < g_width; row++) {
-        for (int column = 0; column < g_height; column++) {
+    // printf("CCW90\n");
+    int render_column, render_row;
+    int rowbyte = g_width * 3;
+    for (int row = g_start / rowbyte; row <= g_end / rowbyte; row++) {
+        render_column = row;
+        for (int column = (g_start % rowbyte) / 3; column <= (g_end % rowbyte) / 3; column++) {
+            render_row = g_width - column - 1;
             int position_frame_buffer = row * g_width * 3 + column * 3;
             rendered_frame[render_row * g_width * 3 + render_column * 3] = buffer_frame[position_frame_buffer];
             rendered_frame[render_row * g_width * 3 + render_column * 3 + 1] = buffer_frame[position_frame_buffer + 1];
             rendered_frame[render_row * g_width * 3 + render_column * 3 + 2] = buffer_frame[position_frame_buffer + 2];
-            render_row -= 1;
         }
-        render_row = g_height - 1;
-        render_column += 1;
     }
-
+    memset(buffer_frame + g_start, BLANK, g_end - g_start);
+    // printf("g_start= %d, g_end= %d, g_ur= %d, g_ll= %d\n", g_start, g_end, g_upperright, g_lowerleft);
+    g_start = indexCCW90(g_start);
+    g_end = indexCCW90(g_end - 3);
+    g_upperright = indexCCW90(g_upperright);
+    g_lowerleft = indexCCW90(g_lowerleft);
+    
+    int tmp = g_start;
+    g_start = g_upperright;
+    g_upperright = g_end;
+    g_end = g_lowerleft;
+    g_lowerleft = tmp;
+    g_end += 3;
+    // printf("g_start= %d, g_end= %d, g_ur= %d, g_ll= %d\n", g_start, g_end, g_upperright, g_lowerleft);
     g_rendered = !g_rendered;
 }
 
+int indexCW180(int idx) {
+    int x, y;
+    int rowbyte = g_width * 3;
+    x = idx / rowbyte;
+    y = (idx % rowbyte) / 3;
+    return (g_height - x - 1) * rowbyte + (g_width - y - 1) * 3;
+}
+
 void rotateCW180(unsigned char *buffer_frame, unsigned char *rendered_frame) {
-	// TODO: to be verified
-	int render_column = g_width - 1;
-    int render_row = g_height - 1;
-    for (int row = 0; row < g_width; row++) {
-        for (int column = 0; column < g_height; column++) {
+    int render_column, render_row;
+    int rowbyte = g_width * 3;
+    for (int row = g_start / rowbyte; row <= g_end / rowbyte; row++) {
+        render_row = g_height - row - 1;
+        for (int column = (g_start % rowbyte) / 3; column <= (g_end % rowbyte) / 3; column++) {
+            render_column = g_width - column - 1;
             int position_frame_buffer = row * g_width * 3 + column * 3;
             rendered_frame[render_row * g_width * 3 + render_column * 3] = buffer_frame[position_frame_buffer];
             rendered_frame[render_row * g_width * 3 + render_column * 3 + 1] = buffer_frame[position_frame_buffer + 1];
             rendered_frame[render_row * g_width * 3 + render_column * 3 + 2] = buffer_frame[position_frame_buffer + 2];
-            render_column -= 1;
         }
-        render_row -= 1;
-        render_column = g_width - 1;
     }
+    memset(buffer_frame + g_start, BLANK, g_end - g_start);
+    g_start = indexCW180(g_start);
+    g_end = indexCW180(g_end - 3);
+    g_upperright = indexCW180(g_upperright);
+    g_lowerleft = indexCW180(g_lowerleft);
+
+    int tmp = g_start;
+    g_start = g_end;
+    g_end = tmp;
+    tmp = g_lowerleft;
+    g_lowerleft = g_upperright;
+    g_upperright = tmp;
+    g_end += 3;
 
     g_rendered = !g_rendered;
 }
@@ -237,18 +332,42 @@ void processRotateCCW(unsigned char *buffer_frame, unsigned char *rendered_frame
  * @param _unused - this field is unused
  * @return
  **********************************************************************************************************************/
+int indexMX(int idx) {
+    int x, y;
+    int rowbyte = g_width * 3;
+    x = idx / rowbyte;
+    y = (idx % rowbyte) / 3;
+    return (g_height - x - 1) * rowbyte + y * 3;
+}
+
 void processMirrorX(unsigned char *buffer_frame, unsigned char *rendered_frame, int _unused) {
+    int rowbyte = g_width * 3;
     // store shifted pixels to temporary buffer
-    for (int row = 0; row < g_height; row++) {
-        for (int column = 0; column < g_width; column++) {
-            int position_rendered_frame = row * g_height * 3 + column * 3;
-            int position_buffer_frame = (g_height - row - 1) * g_height * 3 + column * 3;
+    for (int row = g_start / rowbyte; row <= g_end / rowbyte; row++) {
+        for (int column = (g_start % rowbyte) / 3; column <= (g_end % rowbyte) / 3; column++) {
+            int position_buffer_frame = row * g_height * 3 + column * 3;
+            int position_rendered_frame = (g_width - row - 1) * g_height * 3 + column * 3;
             rendered_frame[position_rendered_frame] = buffer_frame[position_buffer_frame];
             rendered_frame[position_rendered_frame + 1] = buffer_frame[position_buffer_frame + 1];
             rendered_frame[position_rendered_frame + 2] = buffer_frame[position_buffer_frame + 2];
         }
     }
-
+    memset(buffer_frame + g_start, BLANK, g_end - g_start);
+    //printf("MX\n");
+    //printf("g_start= %d, g_end= %d, g_ur= %d, g_ll= %d, len= %d\n", g_start, g_end - 3, g_upperright, g_lowerleft, g_width*g_height*3);
+    g_start = indexMX(g_start);
+    g_end = indexMX(g_end - 3);
+    g_upperright = indexMX(g_upperright);
+    g_lowerleft = indexMX(g_lowerleft);
+    
+    int tmp = g_start;
+    g_start = g_lowerleft;
+    g_lowerleft = tmp;
+    tmp = g_end;
+    g_end = g_upperright;
+    g_upperright = tmp;
+    g_end += 3;
+    //printf("g_start= %d, g_end= %d, g_ur= %d, g_ll= %d, len= %d\n", g_start, g_end - 3, g_upperright, g_lowerleft, g_width*g_height*3);
     g_rendered = !g_rendered;
 }
 
@@ -259,17 +378,41 @@ void processMirrorX(unsigned char *buffer_frame, unsigned char *rendered_frame, 
  * @param _unused - this field is unused
  * @return
  **********************************************************************************************************************/
+int indexMY(int idx) {
+    int x, y;
+    int rowbyte = g_width * 3;
+    x = idx / rowbyte;
+    y = (idx % rowbyte) / 3;
+    return x * rowbyte + (g_width - y - 1) * 3;
+}
+
 void processMirrorY(unsigned char *buffer_frame, unsigned char *rendered_frame, int _unused) {
+    //printf("MY\n");
+    int rowbyte = g_width * 3;
     // store shifted pixels to temporary buffer
-    for (int row = 0; row < g_height; row++) {
-        for (int column = 0; column < g_width; column++) {
-            int position_rendered_frame = row * g_height * 3 + column * 3;
-            int position_buffer_frame = row * g_height * 3 + (g_width - column - 1) * 3;
+    for (int row = g_start / rowbyte; row <= g_end / rowbyte; row++) {
+        for (int column = (g_start % rowbyte) / 3; column <= (g_end % rowbyte) / 3; column++) {
+            int position_buffer_frame = row * g_height * 3 + column * 3;
+            int position_rendered_frame = row * g_height * 3 + (g_width - column - 1) * 3;
             rendered_frame[position_rendered_frame] = buffer_frame[position_buffer_frame];
             rendered_frame[position_rendered_frame + 1] = buffer_frame[position_buffer_frame + 1];
             rendered_frame[position_rendered_frame + 2] = buffer_frame[position_buffer_frame + 2];
         }
     }
+    memset(buffer_frame + g_start, BLANK, g_end - g_start);
+    //printf("g_start= %d, g_end= %d, g_ur= %d, g_ll= %d, len= %d\n", g_start, g_end, g_upperright, g_lowerleft, g_width*g_height*3);
+    g_start = indexMY(g_start);
+    g_end = indexMY(g_end - 3);
+    g_upperright = indexMY(g_upperright);
+    g_lowerleft = indexMY(g_lowerleft);
+    //printf("g_start= %d, g_end= %d, g_ur= %d, g_ll= %d\n", g_start, g_end, g_upperright, g_lowerleft);
+    int tmp = g_start;
+    g_start = g_upperright;
+    g_upperright = tmp;
+    tmp = g_end;
+    g_end = g_lowerleft;
+    g_lowerleft = tmp;
+    g_end += 3;
 
     g_rendered = !g_rendered;
 }
@@ -485,10 +628,37 @@ void implementation_driver(struct kv *sensor_values, int sensor_values_count, un
                            unsigned int width, unsigned int height, bool grading_mode) {
 	// assign global variables
 	g_width = width;
-	g_height = height;
+    g_height = height;
+
+    g_start = 0;
+    while (frame_buffer[g_start] == BLANK && frame_buffer[g_start + 1] == BLANK && frame_buffer[g_start + 2] == BLANK) {
+        g_start+=3;
+    }
+    g_end = height * width * 3;
+    while (frame_buffer[g_end - 1] == BLANK && frame_buffer[g_end - 2] == BLANK && frame_buffer[g_end - 3] == BLANK) {
+        g_end-=3;
+    }
+    int rightmost = 0;
+    int leftmost = g_width;
+    for (int row = g_start / (3 * width); row <= g_end / (3 * width); row++) {
+        for (int column = 0; column < width; column++) {
+            int idx = row * g_width * 3 + column * 3;
+            if (frame_buffer[idx] == BLANK && frame_buffer[idx + 1] == BLANK && frame_buffer[idx + 2] == BLANK) {
+                continue;
+            } else {
+                leftmost = MIN(leftmost, column);
+                rightmost = MAX(rightmost, column);
+            }
+        }
+    }
+    g_start = (g_start / (3 * width)) * width * 3 + leftmost * 3;
+    g_end = (g_end / (3 * width)) * width * 3 + rightmost * 3 + 3;
+    g_upperright = (g_start / (3 * width)) * width * 3 + rightmost * 3;
+    g_lowerleft = (g_end / (3 * width)) * width * 3 + leftmost * 3;
 
     // allocate memory for temporary image buffer
     unsigned char *frame_rendered = allocateFrame(width, height);
+    memset(frame_rendered, BLANK, 3 * g_height * g_width);
 	int processed_frames = 0;
 
 	State state = INIT;
