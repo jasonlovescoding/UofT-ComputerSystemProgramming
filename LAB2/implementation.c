@@ -62,9 +62,20 @@ void processMoveUp(unsigned char *buffer_frame, unsigned char *rendered_frame, i
     }  
     //printf("UP\n");
     int gap = offset * g_width * 3;
-    //printf("g_start= %d, g_end= %d, gap= %d, len= %d\n", g_start, g_end, gap, g_width * g_height * 3);
-    memmove(buffer_frame + g_start - gap, buffer_frame + g_start, g_end - g_start);
+    int rowbyte = g_width * 3;
+    /*memmove(buffer_frame + g_start - gap, buffer_frame + g_start, g_end - g_start);
     memset(buffer_frame + g_end - gap, BLANK, gap);
+    */
+    //printf("g_start= %d, g_end= %d, gap= %d, len= %d\n", g_start, g_end, gap, g_width * g_height * 3);
+    for (int row = g_start / rowbyte; row <= g_end / rowbyte; row++) {
+        memmove(buffer_frame + row * rowbyte + (g_start % rowbyte) - gap, 
+                buffer_frame + row * rowbyte + (g_start % rowbyte), 
+                (g_end % rowbyte) - (g_start % rowbyte));
+    }
+    for (int row = (g_end - gap) / rowbyte + 1; row <= g_end / rowbyte; row++) {
+        memset(buffer_frame + row * rowbyte + (g_start % rowbyte), BLANK, (g_end % rowbyte) - (g_start % rowbyte));
+    }
+    //memset(buffer_frame + g_end - gap, BLANK, gap);
     g_start -= gap;
     g_end -= gap;
     g_upperright -= gap;
@@ -88,11 +99,11 @@ void processMoveRight(unsigned char *buffer_frame, unsigned char *rendered_frame
     }
     int gap = offset * 3;
     int rowbyte = g_width * 3;
-    memmove(buffer_frame + g_start + gap, buffer_frame + g_start, g_end - g_start);
-    if ((g_upperright % rowbyte) + gap > rowbyte) {
-        for (int row = 0; row < g_height; row++) {	
-            memset(buffer_frame + row * rowbyte, BLANK, gap);
-        }
+    for (int row = g_start / rowbyte; row <= g_end / rowbyte; row++) {	
+        memmove(buffer_frame + row * rowbyte + (g_start % rowbyte) + gap, 
+                buffer_frame + row * rowbyte + (g_start % rowbyte),
+                (g_end % rowbyte) - (g_start % rowbyte));
+        memset(buffer_frame + row * rowbyte + (g_start % rowbyte), BLANK, gap);
     }
     g_start += gap;
     g_end += gap;
@@ -117,8 +128,17 @@ void processMoveDown(unsigned char *buffer_frame, unsigned char *rendered_frame,
     }
     //printf("DOWN\n");
     int gap = offset * g_width * 3;
-    memmove(buffer_frame + g_start + gap, buffer_frame + g_start, g_end - g_start);
-    memset(buffer_frame + g_start, BLANK, gap);
+    int rowbyte = g_width * 3;
+    //memmove(buffer_frame + g_start + gap, buffer_frame + g_start, g_end - g_start);
+    //memset(buffer_frame + g_start, BLANK, gap);
+    for (int row = g_end / rowbyte; row >= g_start / rowbyte; row--) {
+        memmove(buffer_frame + row * rowbyte + (g_start % rowbyte) + gap, 
+                buffer_frame + row * rowbyte + (g_start % rowbyte), 
+                (g_end % rowbyte) - (g_start % rowbyte));
+    }
+    for (int row = g_start / rowbyte; row < (g_start + gap) / rowbyte; row++) {
+        memset(buffer_frame + row * rowbyte + (g_start % rowbyte), BLANK, (g_end % rowbyte) - (g_start % rowbyte));
+    }
     g_start += gap;
     g_end += gap;
     g_upperright += gap;
@@ -144,12 +164,13 @@ void processMoveLeft(unsigned char *buffer_frame, unsigned char *rendered_frame,
 
     int gap = offset * 3;
     int rowbyte = g_width * 3;
-    memmove(buffer_frame + g_start - gap, buffer_frame + g_start, g_end - g_start);
-    if ((g_lowerleft % rowbyte) - gap < 0) {
-        for (int row = 0; row < g_height; row++) {
-            memset(buffer_frame + row * rowbyte + rowbyte - gap, BLANK, gap);
-        }
+    for (int row = g_start / rowbyte; row <= g_end / rowbyte; row++) {
+        memmove(buffer_frame + row * rowbyte + (g_start % rowbyte) - gap,
+                buffer_frame + row * rowbyte + (g_start % rowbyte),
+                (g_end % rowbyte) - (g_start % rowbyte));
+        memset(buffer_frame + row * rowbyte + (g_end % rowbyte) - gap, BLANK, gap);
     }
+    
     g_start -= gap;
     g_end -= gap;
     g_upperright -= gap;
@@ -168,6 +189,7 @@ void rotateCW90(unsigned char *buffer_frame, unsigned char *rendered_frame) {
     //printf("CW90\n");
     int render_column, render_row;
     int rowbyte = 3 * g_width;
+
     for (int row = g_start / rowbyte; row <= g_end / rowbyte; row++) {
         render_column = g_width - row - 1;
         for (int column = (g_start % rowbyte) / 3; column <= (g_end % rowbyte) / 3; column++) {
@@ -344,13 +366,9 @@ void processMirrorX(unsigned char *buffer_frame, unsigned char *rendered_frame, 
     int rowbyte = g_width * 3;
     // store shifted pixels to temporary buffer
     for (int row = g_start / rowbyte; row <= g_end / rowbyte; row++) {
-        for (int column = (g_start % rowbyte) / 3; column <= (g_end % rowbyte) / 3; column++) {
-            int position_buffer_frame = row * g_height * 3 + column * 3;
-            int position_rendered_frame = (g_width - row - 1) * g_height * 3 + column * 3;
-            rendered_frame[position_rendered_frame] = buffer_frame[position_buffer_frame];
-            rendered_frame[position_rendered_frame + 1] = buffer_frame[position_buffer_frame + 1];
-            rendered_frame[position_rendered_frame + 2] = buffer_frame[position_buffer_frame + 2];
-        }
+        memmove(rendered_frame + (g_height - row - 1) * rowbyte + (g_start % rowbyte), 
+                buffer_frame + row * rowbyte + (g_start % rowbyte),
+                (g_end % rowbyte) - (g_start % rowbyte));
     }
     memset(buffer_frame + g_start, BLANK, g_end - g_start);
     //printf("MX\n");
@@ -472,6 +490,9 @@ typedef struct tagIteration {
 void process(unsigned char *frame_buffer, unsigned char *frame_rendered, Iteration *iter, State state)
 {
     switch (state) {
+        case INIT: {
+            break;
+        }
         case W: {
             if (g_rendered) {
                 processMoveUp(frame_rendered, frame_buffer, iter->W);
