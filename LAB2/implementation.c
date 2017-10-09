@@ -511,7 +511,7 @@ void print_team_info(){
  *
  **********************************************************************************************************************/
 typedef enum tagState {
-    INIT=0, W=1, A=2, S=3, D=4, ROTATE=5, MIRROR=6
+    INIT=0, SHIFT=1, ROTATE=2, MIRROR=3
 } State;
 
 typedef struct tagIteration {
@@ -524,39 +524,39 @@ void process(unsigned char *frame_buffer, unsigned char *frame_rendered, Iterati
         case INIT: {
             break;
         }
-        case W: {
-            if (g_rendered) {
-                processMoveUp(frame_rendered, frame_buffer, iter->W);
-            } else {
-                processMoveUp(frame_buffer, frame_rendered, iter->W);
+        case SHIFT: {
+            int ws = iter->W - iter->S;
+            if (ws > 0) {
+                if (g_rendered) {
+                    processMoveUp(frame_rendered, frame_buffer, ws);
+                } else {
+                    processMoveUp(frame_buffer, frame_rendered, ws);
+                }
+            } else if (ws < 0) {
+                if (g_rendered) {
+                    processMoveDown(frame_rendered, frame_buffer, -ws);
+                } else {
+                    processMoveDown(frame_buffer, frame_rendered, -ws);
+                }
             }
             iter->W = 0;
-            break;
-        }
-        case A: {
-            if (g_rendered) {
-                processMoveLeft(frame_rendered, frame_buffer, iter->A);
-            } else {
-                processMoveLeft(frame_buffer, frame_rendered, iter->A);
+            iter->S = 0;
+
+            int ad = iter->A - iter->D;
+            if (ad > 0) {
+                if (g_rendered) {
+                    processMoveLeft(frame_rendered, frame_buffer, ad);
+                } else {
+                    processMoveLeft(frame_buffer, frame_rendered, ad);
+                }
+            } else if (ad < 0) {
+                if (g_rendered) {
+                    processMoveRight(frame_rendered, frame_buffer, -ad);
+                } else {
+                    processMoveRight(frame_buffer, frame_rendered, -ad);
+                }
             }
             iter->A = 0;
-            break;
-        }
-        case S: {
-            if (g_rendered) {
-                processMoveDown(frame_rendered, frame_buffer, iter->S);
-            } else {
-                processMoveDown(frame_buffer, frame_rendered, iter->S);
-            }
-            iter->S = 0;
-            break;
-        }
-        case D: {
-            if (g_rendered) {
-                processMoveRight(frame_rendered, frame_buffer, iter->D);
-            } else {
-                processMoveRight(frame_buffer, frame_rendered, iter->D);
-            }
             iter->D = 0;
             break;
         }
@@ -598,7 +598,7 @@ void process(unsigned char *frame_buffer, unsigned char *frame_rendered, Iterati
             iter->MY = 0;
             break;
         }
-        default: fprintf(stderr, "processing unknown state\n");
+        default: fprintf(stderr, "processing unknown state: %d\n", state);
     }
 }
 
@@ -607,40 +607,40 @@ State state_transfer(const char *key, const int value, Iteration *iter)
     if (!strcmp(key, "W")) {
         if (value > 0) {
             iter->W += value;
-            return W;
+            return SHIFT;
         } else if (value < 0) {
             iter->S += -value;
-            return S;
+            return SHIFT;
         } else {
             return INIT;
         }
     } else if (!strcmp(key, "A")) {
         if (value > 0) {
             iter->A += value;
-            return A;
+            return SHIFT;
         } else if (value < 0) {
             iter->D += -value;
-            return D;
+            return SHIFT;
         } else {
             return INIT;
         }
-    } else if (!strcmp(key, "S")) {
+    }  else if (!strcmp(key, "S")) {
         if (value > 0) {
             iter->S += value;
-            return S;
+            return SHIFT;
         } else if (value < 0) {
             iter->W += -value;
-            return W;
+            return SHIFT;
         } else {
             return INIT;
         }
     } else if (!strcmp(key, "D")) {
         if (value > 0) {
             iter->D += value;
-            return D;
+            return SHIFT;
         } else if (value < 0) {
             iter->A += -value;
-            return A;
+            return SHIFT;
         } else {
             return INIT;
         }
@@ -658,7 +658,7 @@ State state_transfer(const char *key, const int value, Iteration *iter)
         if (value > 0) {
             iter->CCW += value;
             return ROTATE;
-        } else if (value < 0) {
+        } else if (value < 0) { 
             iter->CW += -value;
             return ROTATE;
         } else {
@@ -671,7 +671,7 @@ State state_transfer(const char *key, const int value, Iteration *iter)
         iter->MY += 1;
         return MIRROR;
     } else {
-        printf("Invalid key %s", key);
+        printf("Invalid key %s\n", key);
         return -1;
     }
 }
