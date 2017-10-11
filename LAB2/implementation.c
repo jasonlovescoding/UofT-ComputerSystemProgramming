@@ -229,7 +229,7 @@ void processMoveLeft(unsigned char *buffer_frame, unsigned char *rendered_frame,
         b_upperright = blob->upperright;
         b_lowerleft = blob->lowerleft;
         for (int row = b_start / rowbyte; row <= b_end / rowbyte; row++) {
-            memmove(rendered_frame + row * rowbyte + (b_start % rowbyte) - gap,
+            memcpy(rendered_frame + row * rowbyte + (b_start % rowbyte) - gap,
                     buffer_frame + row * rowbyte + (b_start % rowbyte),
                     (b_end - b_start) % rowbyte + 3);
             memset(buffer_frame + row * rowbyte + (b_start % rowbyte), 
@@ -529,7 +529,7 @@ void processMirrorX(unsigned char *buffer_frame, unsigned char *rendered_frame, 
         b_lowerleft = blob->lowerleft;
 
         for (int row = b_start / rowbyte; row <= b_end / rowbyte; row++) {
-            memmove(rendered_frame + (g_height - row - 1) * rowbyte + (b_start % rowbyte), 
+            memcpy(rendered_frame + (g_height - row - 1) * rowbyte + (b_start % rowbyte), 
                     buffer_frame + row * rowbyte + (b_start % rowbyte),
                     (b_end - b_start) % rowbyte + 3);
             memset(buffer_frame + row * rowbyte + (b_start % rowbyte), 
@@ -856,17 +856,12 @@ void deallocateBlobs() {
     }
 }
 
-void implementation_driver(struct kv *sensor_values, int sensor_values_count, unsigned char *frame_buffer,
-                           unsigned int width, unsigned int height, bool grading_mode) {
-	// assign global variables
-	g_width = width;
-    g_height = height;
-    g_blobs = NULL;
-    
+void detectBlobs(unsigned char *frame_buffer) {
+    int tolerance;
     int b_start, b_end, b_upperright, b_lowerleft, leftmost, rightmost;
     int cursor = 0;
-    int rowbyte = width * 3;
-    int framebyte = rowbyte * height;
+    int rowbyte = g_width * 3;
+    int framebyte = rowbyte * g_height;
     Blob *lastblob, *tail;
     while (cursor < framebyte) {
         while (frame_buffer[cursor] == BLANK && frame_buffer[cursor + 1] == BLANK && frame_buffer[cursor + 2] == BLANK) {
@@ -878,25 +873,33 @@ void implementation_driver(struct kv *sensor_values, int sensor_values_count, un
         b_start = cursor;
         rightmost = (cursor % rowbyte) / 3;
         leftmost = (cursor % rowbyte) / 3;
-        while (frame_buffer[cursor] != BLANK || frame_buffer[cursor + 1] != BLANK || frame_buffer[cursor + 2] != BLANK) {
-            leftmost = MIN(leftmost, (cursor % rowbyte) / 3);
-            rightmost = MAX(rightmost, (cursor % rowbyte) / 3);
 
-            cursor+=3;
-            if (cursor >= framebyte) break;   
+        tolerance = g_width;
+        for (;;) {
+            cursor += 3;
+            if (frame_buffer[cursor] == BLANK && frame_buffer[cursor + 1] == BLANK && frame_buffer[cursor + 2] == BLANK) {
+                tolerance--;
+                if (tolerance == 0 || cursor == framebyte - 3) break; 
+            } else {
+                tolerance = g_width + 2; // what the f***
+                b_end = cursor;   
+                if (cursor == framebyte - 3) break;   
+                leftmost = MIN(leftmost, (cursor % rowbyte) / 3);
+                rightmost = MAX(rightmost, (cursor % rowbyte) / 3); 
+            }
         }
-        b_end = cursor - 3;
 
-        b_start = (b_start / (3 * width)) * width * 3 + leftmost * 3;
-        b_end = (b_end / (3 * width)) * width * 3 + rightmost * 3;
-        b_upperright = (b_start / (3 * width)) * width * 3 + rightmost * 3;
-        b_lowerleft = (b_end / (3 * width)) * width * 3 + leftmost * 3;
-        /*printf("start = (%d, %d), end = (%d, %d), upperright = (%d, %d), lowerleft = (%d, %d)\n", 
-                b_start / rowbyte, (b_start % rowbyte) / 3, 
-                b_end / rowbyte, (b_end % rowbyte) / 3,
-                b_upperright / rowbyte, (b_upperright % rowbyte) / 3,
-                b_lowerleft / rowbyte, (b_lowerleft % rowbyte) / 3);*/
+        b_start = (b_start / (3 * g_width)) * g_width * 3 + leftmost * 3;
+        b_end = (b_end / (3 * g_width)) * g_width * 3 + rightmost * 3;
+        b_upperright = (b_start / (3 * g_width)) * g_width * 3 + rightmost * 3;
+        b_lowerleft = (b_end / (3 * g_width)) * g_width * 3 + leftmost * 3;
         
+        /*printf("start = (%d, %d), end = (%d, %d), upperright = (%d, %d), lowerleft = (%d, %d)\n", 
+        b_start / rowbyte, (b_start % rowbyte) / 3, 
+        b_end / rowbyte, (b_end % rowbyte) / 3,
+        b_upperright / rowbyte, (b_upperright % rowbyte) / 3,
+        b_lowerleft / rowbyte, (b_lowerleft % rowbyte) / 3);
+        */
         lastblob->start = b_start;
         lastblob->end = b_end;
         lastblob->upperright = b_upperright;
@@ -910,6 +913,17 @@ void implementation_driver(struct kv *sensor_values, int sensor_values_count, un
             tail = lastblob;
         }
     }
+}
+
+
+void implementation_driver(struct kv *sensor_values, int sensor_values_count, unsigned char *frame_buffer,
+                           unsigned int width, unsigned int height, bool grading_mode) {
+	// assign global variables
+	g_width = width;
+    g_height = height;
+    g_blobs = NULL;
+    
+    detectBlobs(frame_buffer);
 
     // allocate memory for temporary image buffer
     unsigned char *frame_rendered = allocateFrame(width, height);
