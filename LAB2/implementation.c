@@ -8,7 +8,7 @@
 typedef struct tagPixel {
     int row;
     int column;
-    unsigned char RGB[3];
+    unsigned char R, G, B;
 } Pixel;
 
 typedef enum tagState {
@@ -135,7 +135,8 @@ void processMirror(Iteration *iter) {
     }
 }
 
-void process(Iteration *iter, State state) {
+void process(Iteration *iter, State state)
+{
     switch (state) {
         case INIT: {
             break;
@@ -156,7 +157,8 @@ void process(Iteration *iter, State state) {
     }
 }
 
-State state_transfer(const char *key, const int value, Iteration *iter) {
+State state_transfer(const char *key, const int value, Iteration *iter) 
+{
     if (!strcmp(key, "W")) {
         if (value > 0) {
             iter->W += value;
@@ -237,7 +239,9 @@ void detectPixels(unsigned char *frame_buffer) {
         G = frame_buffer[idx + 1];
         B = frame_buffer[idx + 2];
         if (R != BLANK || G != BLANK || B != BLANK) {
-            memcpy(pixels[numpixels].RGB, frame_buffer + idx, 3);
+            pixels[numpixels].R = R;
+            pixels[numpixels].G = G;
+            pixels[numpixels].B = B;
             pixels[numpixels].row = idx / rowbyte;
             pixels[numpixels].column = (idx % rowbyte) / 3;
             numpixels++;  
@@ -252,7 +256,9 @@ void dumpImage(unsigned char *frame_buffer) {
         row = pixels[i].row;
         column = pixels[i].column;
         idx = row * rowbyte + column * 3;
-        memcpy(frame_buffer + idx, pixels[i].RGB, 3);
+        frame_buffer[idx] = pixels[i].R;
+        frame_buffer[idx + 1] = pixels[i].G;
+        frame_buffer[idx + 2] = pixels[i].B;
     }
 }
 
@@ -262,7 +268,9 @@ void clearImage(unsigned char *frame_buffer) {
         row = pixels[i].row;
         column = pixels[i].column;
         idx = row * rowbyte + column * 3;
-        memset(frame_buffer + idx, BLANK, 3);
+        frame_buffer[idx] = BLANK;
+        frame_buffer[idx + 1] = BLANK;
+        frame_buffer[idx + 2] = BLANK;
     }
 }
 
@@ -356,4 +364,3 @@ void implementation_driver(struct kv *sensor_values, int sensor_values_count, un
     //printBMP(width, height, frame_buffer);
     return;
 }
-
