@@ -8,7 +8,7 @@
 typedef struct tagPixel {
     int row;
     int column;
-    unsigned char R, G, B;
+    unsigned char RGB[3];
 } Pixel;
 
 typedef enum tagState {
@@ -135,8 +135,7 @@ void processMirror(Iteration *iter) {
     }
 }
 
-void process(Iteration *iter, State state)
-{
+void process(Iteration *iter, State state) {
     switch (state) {
         case INIT: {
             break;
@@ -157,8 +156,7 @@ void process(Iteration *iter, State state)
     }
 }
 
-State state_transfer(const char *key, const int value, Iteration *iter) 
-{
+State state_transfer(const char *key, const int value, Iteration *iter) {
     if (!strcmp(key, "W")) {
         if (value > 0) {
             iter->W += value;
@@ -239,9 +237,7 @@ void detectPixels(unsigned char *frame_buffer) {
         G = frame_buffer[idx + 1];
         B = frame_buffer[idx + 2];
         if (R != BLANK || G != BLANK || B != BLANK) {
-            pixels[numpixels].R = R;
-            pixels[numpixels].G = G;
-            pixels[numpixels].B = B;
+            memcpy(pixels[numpixels].RGB, frame_buffer + idx, 3);
             pixels[numpixels].row = idx / rowbyte;
             pixels[numpixels].column = (idx % rowbyte) / 3;
             numpixels++;  
@@ -256,9 +252,7 @@ void dumpImage(unsigned char *frame_buffer) {
         row = pixels[i].row;
         column = pixels[i].column;
         idx = row * rowbyte + column * 3;
-        frame_buffer[idx] = pixels[i].R;
-        frame_buffer[idx + 1] = pixels[i].G;
-        frame_buffer[idx + 2] = pixels[i].B;
+        memcpy(frame_buffer + idx, pixels[i].RGB, 3);
     }
 }
 
@@ -268,9 +262,7 @@ void clearImage(unsigned char *frame_buffer) {
         row = pixels[i].row;
         column = pixels[i].column;
         idx = row * rowbyte + column * 3;
-        frame_buffer[idx] = BLANK;
-        frame_buffer[idx + 1] = BLANK;
-        frame_buffer[idx + 2] = BLANK;
+        memset(frame_buffer + idx, BLANK, 3);
     }
 }
 
