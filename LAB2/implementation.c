@@ -232,22 +232,30 @@ State state_transfer(const char *key, const int value, Iteration *iter)
 }
 
 void detectPixels(unsigned char *frame_buffer) {
-    int idx = 0;
     unsigned char R, G, B;
+    int idx = 0;
+    unsigned char *BLANK_FRAME = (unsigned char *)malloc(rowbyte);
+    memset(BLANK_FRAME, BLANK, rowbyte);
     while (idx < framebyte) {
-        R = frame_buffer[idx];
-        G = frame_buffer[idx + 1];
-        B = frame_buffer[idx + 2];
-        if (R != BLANK || G != BLANK || B != BLANK) {
-            pixels[numpixels].R = R;
-            pixels[numpixels].G = G;
-            pixels[numpixels].B = B;
-            pixels[numpixels].row = idx / rowbyte;
-            pixels[numpixels].column = (idx % rowbyte) / 3;
-            numpixels++;  
+        while (memcmp(frame_buffer + idx, BLANK_FRAME, rowbyte) == 0 && idx + rowbyte < framebyte) {
+            idx += rowbyte;
         }
-        idx += 3;
+        int bound = (idx + rowbyte) < framebyte ? (idx + rowbyte) : framebyte;
+        for (; idx < bound; idx+=3) {
+            R = frame_buffer[idx];
+            G = frame_buffer[idx + 1];
+            B = frame_buffer[idx + 2];
+            if (R != BLANK || G != BLANK || B != BLANK) {
+                pixels[numpixels].R = R;
+                pixels[numpixels].G = G;
+                pixels[numpixels].B = B;
+                pixels[numpixels].row = idx / rowbyte;
+                pixels[numpixels].column = (idx % rowbyte) / 3;
+                numpixels++;  
+            }
+        }
     }
+    free(BLANK_FRAME);
 }
 
 void dumpImage(unsigned char *frame_buffer) {
