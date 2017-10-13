@@ -5,12 +5,6 @@
 #include "utilities.h"  // DO NOT REMOVE this line
 #include "implementation_reference.h"   // DO NOT REMOVE this line
 
-typedef struct tagPixel {
-    int row;
-    int column;
-    unsigned char R, G, B;
-} Pixel;
-
 typedef enum tagState {
     INIT=0, SHIFT=1, ROTATE=2, MIRROR=3
 } State;
@@ -24,7 +18,11 @@ typedef struct tagIteration {
 // width and height of this image, globally visible
 unsigned int g_width, g_height;
 // buffer of colored pixels
-Pixel *pixels;
+int *ROW;
+int *COLUMN;
+unsigned char *R;
+unsigned char *G;
+unsigned char *B;
 // number of colored pixels
 int numpixels;
 // bytes in a row
@@ -50,9 +48,23 @@ void processShift(Iteration *iter) {
     iter->A = 0;
     iter->S = 0;
     iter->D = 0;
-    for (int i = 0; i < numpixels; i++) {
-        pixels[i].row += sw;
-        pixels[i].column += da;
+
+    int i = 0;
+    for (; i + 4 < numpixels; i+=4) {
+        ROW[i] += sw;
+        ROW[i + 1] += sw;
+        ROW[i + 2] += sw;
+        ROW[i + 3] += sw;
+
+        COLUMN[i] += da;  
+        COLUMN[i + 1] += da; 
+        COLUMN[i + 2] += da; 
+        COLUMN[i + 3] += da; 
+    }
+
+    for (; i < numpixels; i++) {
+        ROW[i] += sw;
+        COLUMN[i] += da;  
     }
 }
 
@@ -89,27 +101,76 @@ void processRotate(Iteration *iter) {
 }
 
 void rotateCW90() {
-    int tmp;
-    for (int i = 0; i < numpixels; i++) {
-        tmp = g_width - pixels[i].row - 1;
-        pixels[i].row = pixels[i].column;
-        pixels[i].column = tmp;
+    int tmp0, tmp1, tmp2, tmp3;
+    int i = 0;
+    for (; i + 4 < numpixels; i+=4) {
+        tmp0 = g_width - ROW[i] - 1;
+        tmp1 = g_width - ROW[i + 1] - 1;
+        tmp2 = g_width - ROW[i + 2] - 1;
+        tmp3 = g_width - ROW[i + 3] - 1;
+
+        ROW[i] = COLUMN[i];
+        ROW[i + 1] = COLUMN[i + 1];
+        ROW[i + 2] = COLUMN[i + 2];
+        ROW[i + 3] = COLUMN[i + 3];
+
+        COLUMN[i] = tmp0;
+        COLUMN[i + 1] = tmp1;
+        COLUMN[i + 2] = tmp2;
+        COLUMN[i + 3] = tmp3;
+    }
+
+    for (; i < numpixels; i++) {
+        tmp0 = g_width - ROW[i] - 1;
+        ROW[i] = COLUMN[i];
+        COLUMN[i] = tmp0;
     }
 }
 
 void rotateCCW90() {
-    int tmp;
-    for (int i = 0; i < numpixels; i++) {
-        tmp = g_height - pixels[i].column - 1;
-        pixels[i].column = pixels[i].row;
-        pixels[i].row = tmp;
+    int tmp0, tmp1, tmp2, tmp3;
+    int i = 0;
+    for (; i + 4 < numpixels; i+=4) {
+        tmp0 = g_height - COLUMN[i] - 1;
+        tmp1 = g_height - COLUMN[i + 1] - 1;
+        tmp2 = g_height - COLUMN[i + 2] - 1;
+        tmp3 = g_height - COLUMN[i + 3] - 1;
+
+        COLUMN[i] = ROW[i];
+        COLUMN[i + 1] = ROW[i + 1];
+        COLUMN[i + 2] = ROW[i + 2];
+        COLUMN[i + 3] = ROW[i + 3];
+
+        ROW[i] = tmp0;
+        ROW[i + 1] = tmp1;
+        ROW[i + 2] = tmp2;
+        ROW[i + 3] = tmp3;
+    }
+
+    for (; i < numpixels; i++) {
+        tmp0 = g_height - COLUMN[i] - 1;
+        COLUMN[i] = ROW[i];
+        ROW[i] = tmp0;
     }
 }
 
 void rotateCW180() {
-    for (int i = 0; i < numpixels; i++) {
-        pixels[i].row = g_height - pixels[i].row - 1;
-        pixels[i].column = g_width - pixels[i].column - 1;
+    int i = 0;
+    for (; i + 4 < numpixels; i+=4) {
+        ROW[i] = g_height - ROW[i] - 1;
+        ROW[i + 1] = g_height - ROW[i + 1] - 1;
+        ROW[i + 2] = g_height - ROW[i + 2] - 1;
+        ROW[i + 3] = g_height - ROW[i + 3] - 1;
+
+        COLUMN[i] = g_width - COLUMN[i] - 1;
+        COLUMN[i + 1] = g_width - COLUMN[i + 1] - 1;
+        COLUMN[i + 2] = g_width - COLUMN[i + 2] - 1;
+        COLUMN[i + 3] = g_width - COLUMN[i + 3] - 1;
+    }
+
+    for (; i < numpixels; i++) {
+        ROW[i] = g_height - ROW[i] - 1;
+        COLUMN[i] = g_width - COLUMN[i] - 1;
     }
 }
 
@@ -119,18 +180,42 @@ void processMirror(Iteration *iter) {
     iter->MX = 0;
     iter->MY = 0;
 
+    int i = 0;
     if (X && Y) {
-        for (int i = 0; i < numpixels; i++) {
-            pixels[i].row = g_height - pixels[i].row - 1;
-            pixels[i].column = g_width - pixels[i].column - 1;
+        for (; i + 4 < numpixels; i+=4) {
+            ROW[i] = g_height - ROW[i] - 1;
+            ROW[i + 1] = g_height - ROW[i + 1] - 1;
+            ROW[i + 2] = g_height - ROW[i + 2] - 1;
+            ROW[i + 3] = g_height - ROW[i + 3] - 1;
+            
+            COLUMN[i] = g_width - COLUMN[i] - 1;
+            COLUMN[i + 1] = g_width - COLUMN[i + 1] - 1;
+            COLUMN[i + 2] = g_width - COLUMN[i + 2] - 1;
+            COLUMN[i + 3] = g_width - COLUMN[i + 3] - 1;
+        }
+        for (; i < numpixels; i++) {
+            ROW[i] = g_height - ROW[i] - 1;
+            COLUMN[i] = g_width - COLUMN[i] - 1;
         }
     } else if (X) {
-        for (int i = 0; i < numpixels; i++) {
-            pixels[i].row = g_height - pixels[i].row - 1;
+        for (; i + 4 < numpixels; i+=4) {
+            ROW[i] = g_height - ROW[i] - 1;
+            ROW[i + 1] = g_height - ROW[i + 1] - 1;
+            ROW[i + 2] = g_height - ROW[i + 2] - 1;
+            ROW[i + 3] = g_height - ROW[i + 3] - 1;
+        }
+        for (; i < numpixels; i++) {
+            ROW[i] = g_height - ROW[i] - 1;
         }
     } else if (Y) {
-        for (int i = 0; i < numpixels; i++) {
-            pixels[i].column = g_width - pixels[i].column - 1;
+        for (; i + 4 < numpixels; i+=4) {
+            COLUMN[i] = g_width - COLUMN[i] - 1;
+            COLUMN[i + 1] = g_width - COLUMN[i + 1] - 1;
+            COLUMN[i + 2] = g_width - COLUMN[i + 2] - 1;
+            COLUMN[i + 3] = g_width - COLUMN[i + 3] - 1;
+        }
+        for (; i < numpixels; i++) {
+            COLUMN[i] = g_width - COLUMN[i] - 1;
         }
     }
 }
@@ -232,25 +317,26 @@ State state_transfer(const char *key, const int value, Iteration *iter)
 }
 
 void detectPixels(unsigned char *frame_buffer) {
-    unsigned char R, G, B;
+    unsigned char r, g, b;
     int idx = 0;
-    unsigned char *BLANK_FRAME = (unsigned char *)malloc(rowbyte);
-    memset(BLANK_FRAME, BLANK, rowbyte);
+    int scanbyte = 2 * rowbyte;
+    unsigned char *BLANK_FRAME = (unsigned char *) malloc(scanbyte);
+    memset(BLANK_FRAME, BLANK, scanbyte);
     while (idx < framebyte) {
-        while (memcmp(frame_buffer + idx, BLANK_FRAME, rowbyte) == 0 && idx + rowbyte < framebyte) {
-            idx += rowbyte;
+        while (idx + scanbyte < framebyte && memcmp(frame_buffer + idx, BLANK_FRAME, scanbyte) == 0) {
+            idx += scanbyte;
         }
-        int bound = (idx + rowbyte) < framebyte ? (idx + rowbyte) : framebyte;
+        int bound = (idx + scanbyte) < framebyte ? (idx + scanbyte) : framebyte;
         for (; idx < bound; idx+=3) {
-            R = frame_buffer[idx];
-            G = frame_buffer[idx + 1];
-            B = frame_buffer[idx + 2];
-            if (R != BLANK || G != BLANK || B != BLANK) {
-                pixels[numpixels].R = R;
-                pixels[numpixels].G = G;
-                pixels[numpixels].B = B;
-                pixels[numpixels].row = idx / rowbyte;
-                pixels[numpixels].column = (idx % rowbyte) / 3;
+            r = frame_buffer[idx];
+            g = frame_buffer[idx + 1];
+            b = frame_buffer[idx + 2];
+            if (r != BLANK || g != BLANK || b != BLANK) {
+                R[numpixels] = r;
+                G[numpixels] = g;
+                B[numpixels] = b;
+                ROW[numpixels] = idx / rowbyte;
+                COLUMN[numpixels] = (idx % rowbyte) / 3;
                 numpixels++;  
             }
         }
@@ -259,26 +345,68 @@ void detectPixels(unsigned char *frame_buffer) {
 }
 
 void dumpImage(unsigned char *frame_buffer) {
-    int idx, row, column;
-    for (int i = 0; i < numpixels; i++) {
-        row = pixels[i].row;
-        column = pixels[i].column;
-        idx = row * rowbyte + column * 3;
-        frame_buffer[idx] = pixels[i].R;
-        frame_buffer[idx + 1] = pixels[i].G;
-        frame_buffer[idx + 2] = pixels[i].B;
+    int idx0, idx1, idx2, idx3;
+    int i = 0;
+    for (; i + 4 < numpixels; i+=4) {
+        idx0 = ROW[i] * rowbyte + COLUMN[i] * 3;
+        idx1 = ROW[i + 1] * rowbyte + COLUMN[i + 1] * 3;
+        idx2 = ROW[i + 2] * rowbyte + COLUMN[i + 2] * 3;
+        idx3 = ROW[i + 3] * rowbyte + COLUMN[i + 3] * 3;
+
+        frame_buffer[idx0] = R[i];
+        frame_buffer[idx1] = R[i + 1];
+        frame_buffer[idx2] = R[i + 2];
+        frame_buffer[idx3] = R[i + 3];
+ 
+        frame_buffer[idx0 + 1] = G[i];
+        frame_buffer[idx1 + 1] = G[i + 1];
+        frame_buffer[idx2 + 1] = G[i + 2];
+        frame_buffer[idx3 + 1] = G[i + 3];
+ 
+        frame_buffer[idx0 + 2] = B[i];
+        frame_buffer[idx1 + 2] = B[i + 1];
+        frame_buffer[idx2 + 2] = B[i + 2];
+        frame_buffer[idx3 + 2] = B[i + 3];
+    }
+
+    for (; i < numpixels; i++) {
+        idx0 = ROW[i] * rowbyte + COLUMN[i] * 3;
+        frame_buffer[idx0] = R[i];
+        frame_buffer[idx0 + 1] = G[i];
+        frame_buffer[idx0 + 2] = B[i];
     }
 }
 
 void clearImage(unsigned char *frame_buffer) {
-    int idx, row, column;
-    for (int i = 0; i < numpixels; i++) {
-        row = pixels[i].row;
-        column = pixels[i].column;
-        idx = row * rowbyte + column * 3;
-        frame_buffer[idx] = BLANK;
-        frame_buffer[idx + 1] = BLANK;
-        frame_buffer[idx + 2] = BLANK;
+    int idx0, idx1, idx2, idx3;
+    int i = 0;
+    for (; i + 4 < numpixels; i+=4) {
+        idx0 = ROW[i] * rowbyte + COLUMN[i] * 3;
+        idx1 = ROW[i + 1] * rowbyte + COLUMN[i + 1] * 3;
+        idx2 = ROW[i + 2] * rowbyte + COLUMN[i + 2] * 3;
+        idx3 = ROW[i + 3] * rowbyte + COLUMN[i + 3] * 3;
+
+        frame_buffer[idx0] = BLANK;
+        frame_buffer[idx1] = BLANK;
+        frame_buffer[idx2] = BLANK;
+        frame_buffer[idx3] = BLANK;
+ 
+        frame_buffer[idx0 + 1] = BLANK;
+        frame_buffer[idx1 + 1] = BLANK;
+        frame_buffer[idx2 + 1] = BLANK;
+        frame_buffer[idx3 + 1] = BLANK;
+ 
+        frame_buffer[idx0 + 2] = BLANK;
+        frame_buffer[idx1 + 2] = BLANK;
+        frame_buffer[idx2 + 2] = BLANK;
+        frame_buffer[idx3 + 2] = BLANK;
+    }
+
+    for (; i < numpixels; i++) {
+        idx0 = ROW[i] * rowbyte + COLUMN[i] * 3;
+        frame_buffer[idx0] = BLANK;
+        frame_buffer[idx0 + 1] = BLANK;
+        frame_buffer[idx0 + 2] = BLANK;
     }
 }
 
@@ -333,7 +461,11 @@ void implementation_driver(struct kv *sensor_values, int sensor_values_count, un
     g_height = height;
     rowbyte = 3 * width;
     framebyte = height * rowbyte;
-    pixels = (Pixel *)malloc(width * height * sizeof(Pixel));
+    ROW = (int *)malloc(width * height * sizeof(int));
+    COLUMN = (int *)malloc(width * height * sizeof(int));
+    R = (unsigned char *)malloc(width * height);
+    G = (unsigned char *)malloc(width * height);
+    B = (unsigned char *)malloc(width * height);
     numpixels = 0;
 
     detectPixels(frame_buffer);
@@ -368,7 +500,11 @@ void implementation_driver(struct kv *sensor_values, int sensor_values_count, un
         process(&iter, state);
         dumpImage(frame_buffer);
     }
-    free(pixels);
+    free(ROW);
+    free(COLUMN);
+    free(R);
+    free(G);
+    free(B);
     //printBMP(width, height, frame_buffer);
     return;
 }
