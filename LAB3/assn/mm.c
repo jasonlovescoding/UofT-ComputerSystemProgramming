@@ -65,19 +65,19 @@ team_t team = {
 #define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))
 
 /* Number of segregated lists */
-// only 1 list is proven the most efficient??
-#define NUM_SEG_LISTS 1
+#define NUM_SEG_LISTS 10
 
 /* Minimum size of a block */
 #define MIN_LOG2_BLOCK_SIZE 5
-#define MIN_BLOCK_SIZE (1<<MIN_LOG2_BLOCK_SIZE)
+#define MIN_BLOCK_SIZE (1 << MIN_LOG2_BLOCK_SIZE)
 
 /* Minimum size of a malloc without rounding up */
 #define MIN_MALLOC_BLOCK_SIZE (MIN_BLOCK_SIZE << 4)
 
 void* heap_listp = NULL;
 
-/* To achieve constant-time list_remove, we use doubly-linked circular list. */
+/* To achieve constant-time list_remove, we use doubly-linked list. */
+/* To achieve constant-time list_insert into tail, we make the list circular */
 typedef struct tagFreeBlock {
 	struct tagFreeBlock *prev;
 	// the last block should poing to the first block
@@ -102,7 +102,7 @@ int list_index(int asize) {
 /**********************************************************
  * list_insert
  * @param: FreeBlock* bp
- * @effect: insert block *bp into corresponding list 
+ * @effect: insert block *bp into corresponding list tail
  **********************************************************/
 void list_insert(FreeBlock* bp) {
 	int index = list_index(GET_SIZE(HDRP(bp)));
@@ -113,14 +113,12 @@ void list_insert(FreeBlock* bp) {
 		bp->prev = bp;
 		seg_lists[index] = bp;
 	} else {
-		// case 2: list not empty. Insert block to list head
+		// case 2: list not empty. Insert block to list tail
 		bp->next = seg_lists[index];
 		bp->prev = seg_lists[index]->prev;
 		bp->prev->next = bp;
         bp->next->prev = bp;	
-		// insert into head is proven bad in realloc	
-		// WHY???	
-		//seg_lists[index] = bp; 
+		// seg_lists[index] = bp;
 	}
 }
 
