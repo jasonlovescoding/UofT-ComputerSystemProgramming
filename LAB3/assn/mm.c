@@ -426,7 +426,7 @@ void *mm_realloc(void *ptr, size_t size) {
  * Check the consistency of the memory heap
  * Return nonzero if the heap is consistant.
  *********************************************************/
-int mm_check(FreeBlock *old_p, FreeBlock *new_p, int block_size, int index) {
+int mm_check(FreeBlock *old_p, FreeBlock *new_p, int block_size) {
     FreeBlock *head;
     FreeBlock *tail;
     FreeBlock *bp;  //pointer pointing to the beginning block in heap
