@@ -1,11 +1,14 @@
-/* 
- * List structure: doubly-linked circular list to achieve constant-time insertion and removal
+/* Block management: segregated lists to achieve utilization close to the level of tree management, which is not applicable given the limit of global variables. 
+ * List structure: doubly-linked list to achieve constant-time node removal.
  * Block structure: 
- *       Free block: header | payload (padding) | footer 
- *		 Allocated block: header | prev pointer | next pointer | (padding) | footer
- * Search algorithm: first-fit to maximize throughput
- * Rounding skill: External fragments larger than MIN_BLOCK_SIZE are re-inserted as new blocks
- * 
+ *       Allocated block: header | payload | (padding) | footer 
+ *		 Free block: header | prev pointer | next pointer | payload | footer
+ * Search algorithm: first-fit to maximize throughput. utilization is improved via rounding skills.
+ * Rounding skill: 1. External fragments larger than MIN_BLOCK_SIZE are re-inserted as new blocks to improve utilization without large cost on throughput.
+ *                 2. malloc's smaller than MIN_MALLOC_BLOCK_SIZE are rounded up to nearest power-2 number to maximize the chance of reuse with little cost and thus increase utilization.
+ * Side-note: given that external fragments are often generated in realloc, with the rounding skill #1 there are usually a lot of smaller blocks re-inserted.
+ *            To improve the performance of realloc, we choose to insert new blocks into the tail of segregated lists to speed up search.
+ *            We make the lists circular to achieve constant-time tail insertion.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -75,7 +78,6 @@ team_t team = {
 
 /* bit masking the last bit out of a char pointer */
 #define FIND_LAST_BIT(bp) (GET_ALLOC(HDRP(bp)))
-// serious double if this is the right way to write it
 
 void* heap_listp = NULL;
 
@@ -97,7 +99,7 @@ FreeBlock* seg_lists[NUM_SEG_LISTS];
                         with node of corresponding adjusted size
  **********************************************************/
 int list_index(int asize) {
-    int index = 0;
+    int index = 0; 
     while (asize >>= 1) index++;
     return MIN((index - MIN_LOG2_BLOCK_SIZE + 1), (NUM_SEG_LISTS - 1));
 }
@@ -308,7 +310,7 @@ void *mm_malloc(size_t size) {
     if (size == 0) {
         return NULL;
     }
-    // To maximize throughput with little cost on utilization
+    // To maximize utilization with little cost on throughput
     // we can round small malloc task size UP to nearest 2-pow exp
     if (size < (MIN_MALLOC_BLOCK_SIZE)) {
         int rsize = 1;
@@ -392,13 +394,25 @@ void *mm_realloc(void *ptr, size_t size) {
             return (void *) bp;
         } else {
             // case 2-2: otherwise, alloc a new block
-            void *newbp;
-            if ((newbp = mm_malloc(size)) == NULL) return NULL;
-            // maintain data
-            memmove(newbp, ptr, oldsize - DSIZE);
-            // and free the old block
-            list_insert((FreeBlock *) bp);
-            return newbp;
+            void *newbp = find_fit(asize);
+			if (newbp == NULL) {
+				// case 2-2-1: there is no block available in the segregated lists, the heap must be extended
+				if ((newbp = extend_heap(asize / WSIZE)) == NULL) return NULL;
+				place(newbp, 1);
+			    // maintain data
+			    memmove(newbp, ptr, oldsize - DSIZE);
+			    // and free the old block
+			    list_insert((FreeBlock *) bp);
+			    return newbp;				
+			} 
+			// case 2-2-2: there is a block available in the segregated lists
+			PUT(HDRP(newbp), PACK(asize, 1));
+			PUT(FTRP(newbp), PACK(asize, 1));
+	        // maintain data
+	        memmove(newbp, ptr, oldsize - DSIZE);
+	        // and free the old block
+	        list_insert((FreeBlock *) bp);
+	        return newbp;
         }
     } else {
         // case 3: size shrunk, same as find_fit
