@@ -1,7 +1,11 @@
-/* Data structure for block management: doubly-linked circular list
+/* 
+ * List structure: doubly-linked circular list to achieve constant-time insertion and removal
  * Block structure: 
- *       Free block: header, payload, footer 
- *		 Allocated block: 
+ *       Free block: header | payload (padding) | footer 
+ *		 Allocated block: header | prev pointer | next pointer | (padding) | footer
+ * Search algorithm: first-fit to maximize throughput
+ * Rounding skill: External fragments larger than MIN_BLOCK_SIZE are re-inserted as new blocks
+ * 
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -70,6 +74,7 @@ team_t team = {
 #define MIN_MALLOC_BLOCK_SIZE (MIN_BLOCK_SIZE << 4)
 
 /* bit masking the last bit out of a char pointer */
+#define FIND_LAST_BIT(bp) (GET_ALLOC(HDRP(bp)))
 // serious double if this is the right way to write it
 
 void* heap_listp = NULL;
