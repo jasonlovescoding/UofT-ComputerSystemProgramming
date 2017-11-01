@@ -1,12 +1,7 @@
-/*
- * This implementation replicates the implicit list implementation
- * provided in the textbook
- * "Computer Systems - A Programmer's Perspective"
- * Blocks are never coalesced or reused.
- * Realloc is implemented directly using mm_malloc and mm_free.
- *
- * NOTE TO STUDENTS: Replace this header comment with your own header
- * comment that gives a high level description of your solution.
+/* Data structure for block management: doubly-linked circular list
+ * Block structure: 
+ *       Free block: header, payload, footer 
+ *		 Allocated block: 
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -65,8 +60,7 @@ team_t team = {
 #define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))
 
 /* Number of segregated lists */
-// only 1 list is proven the most efficient??
-#define NUM_SEG_LISTS 1
+#define NUM_SEG_LISTS 10
 
 /* Minimum size of a block */
 #define MIN_LOG2_BLOCK_SIZE 5
@@ -76,12 +70,12 @@ team_t team = {
 #define MIN_MALLOC_BLOCK_SIZE (MIN_BLOCK_SIZE << 4)
 
 /* bit masking the last bit out of a char pointer */
-#define FIND_LAST_BIT(bp) ((uintptr_t) bp & (uintptr_t) 0b1) 
 // serious double if this is the right way to write it
 
 void* heap_listp = NULL;
 
 /* To achieve constant-time list_remove, we use doubly-linked circular list. */
+/* To achieve constant-time list_insert into tail, we make the list circular */
 typedef struct tagFreeBlock {
     struct tagFreeBlock *prev;
     // the last block should poing to the first block
@@ -122,9 +116,6 @@ void list_insert(FreeBlock* bp) {
         bp->prev = seg_lists[index]->prev;
         bp->prev->next = bp;
         bp->next->prev = bp;
-        // insert into head is proven bad in realloc
-        // WHY???
-        //seg_lists[index] = bp;
     }
 }
 
