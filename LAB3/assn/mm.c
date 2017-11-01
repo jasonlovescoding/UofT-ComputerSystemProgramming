@@ -77,7 +77,8 @@ team_t team = {
 #define MIN_MALLOC_BLOCK_SIZE (MIN_BLOCK_SIZE << 4)
 
 /* bit masking the last bit out of a char pointer */
-#define FIND_LAST_BIT(bp) (GET_ALLOC(HDRP(bp)))
+#define FIND_LAST_BITH(bp) (GET_ALLOC(HDRP(bp)))
+#define FIND_LAST_BITF(bp) (GET_ALLOC(FTRP(bp)))
 
 void* heap_listp = NULL;
 
@@ -431,11 +432,24 @@ void *mm_realloc(void *ptr, size_t size) {
     }
 }
 
+
 /**********************************************************
  * mm_check
  * Check the consistency of the memory heap
  * Return nonzero if the heap is consistant.
  *********************************************************/
+
+/* 
+ * old mm_check function, which check all five possible errors together:
+ * 
+ * 1. check the last bit of the header/footer of a free block is 0;
+ * 2. check after reallocation, if the new data is consistent with the old data;
+ * 3. check if all free blocks are in the lists;
+ * 4. check if all free blocks are coalesced properly;
+ * 5. check if any of the free blocks are overlapped with each other in the heap;
+ * 
+ * all checking function returns 1 if no error is founded.
+
 int mm_check(FreeBlock *old_p, FreeBlock *new_p, int block_size) {
     FreeBlock *head;
     FreeBlock *tail;
@@ -495,6 +509,99 @@ int mm_check(FreeBlock *old_p, FreeBlock *new_p, int block_size) {
                 return 0;
             }
         } else if (FIND_LAST_BIT(HDRP(bp)) != FIND_LAST_BIT(FTRP(bp))) {
+            printf("head and tail of a block are not consistent \n");
+            return 0;
+        }
+    }
+    return 1;
+}
+ */
+
+//check after reallocation, if the new data is consistent with the old data;
+int realloc_consis(FreeBlock *old_p, FreeBlock *new_p, int block_size) {
+
+    for (int s = 0; s < block_size; s++) {
+        // here, I don't know if block_size includes header and footer,
+        // if it does, then it should be block_size = block_size - 2 (words)
+        // also s should start from s + 1 (word)
+        if (GET(old_p + s) != GET(new_p + s)) {
+            printf("reallocated data is not consistent with the original data");
+            return 0;
+        }
+    }
+    return 1;
+}
+
+//check if all free blocks are coalesced properly;
+
+int check_coalesce() {
+    FreeBlock *bp; //pointer pointing to the beginning block in heap
+
+    for (bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) {
+        // goes through entire heap to find all the free blocks
+        if (FIND_LAST_BITH(bp) == FIND_LAST_BITF(bp) == 0) {
+            // if the last bit of head and tail is 0, it is a free block
+
+            if (((FIND_LAST_BITH(PREV_BLKP(bp)) == 0) && (bp != PREV_BLKP(bp)))
+                    || ((FIND_LAST_BITF(NEXT_BLKP(bp)) == 0) && (bp != NEXT_BLKP(bp)))) {
+                    // see if the last or the next block in the heap is also a free block
+                printf("a free block in the heap is not coalesced properly \n");
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+/*
+ * 1. check the last bit of the header/footer of a free block is 0;
+ * 2. check if all free blocks are in the lists;
+ * 3. check if any of the free blocks are overlapped with each other in the heap;
+ */
+int check_fb_property() {
+    FreeBlock *head;
+    FreeBlock *tail;
+    FreeBlock *bp;  //pointer pointing to the beginning block in heap
+
+    for (bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) {
+        // goes through entire heap to find all the free blocks
+        if (FIND_LAST_BITH(bp) == FIND_LAST_BITF(bp) == 0) {
+            // if the last bit of head and tail is 0, it is a free block
+
+            int found = 0;
+            // make sure to check every free list there is
+            for (int index = 0; index < NUM_SEG_LISTS; index++) {
+                head = seg_lists[index];
+                tail = seg_lists[index]->prev;
+                while (head != tail) {
+                    if (bp == head) {
+                        found = 1;
+                    }
+                    // goes through the entire free block list
+                    // to see if this free block is in the list
+                    if ((bp > HDRP(head)) && (bp < FTRP(head))) {
+                        // check if this free block overlaps with any other 
+                        // free block within the free block list
+                        printf("this free block overlaps with another free block in the list \n");
+                        return 0;
+                    }
+                    head = head->next;
+                }
+                if (bp = head) {
+                    found = 1;
+                }
+                // check the tail block in the list
+                // since we did not check it in the while loop
+                if ((bp > HDRP(head)) && (bp < FTRP(head))) {
+                    printf("this free block overlaps with another free block in the list \n");
+                    return 0;
+                }
+            }
+            if (found = 0) {
+                printf("a free block in the heap is not found in the list \n");
+                return 0;
+            }
+        } else if (FIND_LAST_BITH(bp) != FIND_LAST_BITF(bp)) {
             printf("head and tail of a block are not consistent \n");
             return 0;
         }
