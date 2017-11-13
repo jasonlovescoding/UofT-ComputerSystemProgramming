@@ -23,7 +23,7 @@ if (!-e "$dir/Results") {
 #my @namelist = ("libc", "kheap", "a2alloc");
 my @namelist = ("libc", "alloc");
 # replace this one with just "libc" and "kheap" if you wish to run those allocators
-#my @namelist = ("a2alloc");
+#my @namelist = ("alloc");
 my $name;
 
 foreach $name (@namelist) {
