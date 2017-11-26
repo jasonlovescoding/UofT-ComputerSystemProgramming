@@ -20,10 +20,9 @@ if (!-e "$dir/Results") {
 }
 
 # Initialize list of allocators to test.
-#my @namelist = ("libc", "kheap", "a2alloc");
-my @namelist = ("libc", "alloc");
+#my @namelist = ("libc", "kheap", "alloc");
+my @namelist = ("alloc");
 # replace this one with just "libc" and "kheap" if you wish to run those allocators
-#my @namelist = ("alloc");
 my $name;
 
 foreach $name (@namelist) {

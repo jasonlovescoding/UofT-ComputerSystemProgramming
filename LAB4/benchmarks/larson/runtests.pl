@@ -21,7 +21,7 @@ if (!-e "$dir/Results") {
 
 # Initialize list of allocators to test.
 #my @namelist = ("libc", "kheap", "alloc");
-my @namelist = ("alloc");
+my @namelist = ("libc", "alloc");
 my $name;
 
 foreach $name (@namelist) {
@@ -67,5 +67,6 @@ foreach $name (@namelist) {
 	}
     }
 }
+
 
 

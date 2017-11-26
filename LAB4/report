@@ -1,0 +1,17 @@
+ECE454 Lab4 Report
+
+Team members:
+Zhang Qianhao #1004654377
+Chen Jingfeng #1000411262
+
+In Lab4, we improved our previous code’s working environment in multi-threading by placing a few fine-grained locks around free memory segregated lists, and heap memory. The implementations are as follows:
+
+We initialize 512kb heap memory for each thread to store all objects smaller than 8 pages of memory (32kb).
+Objects larger than 8 pages are initialized in the global heap, up to 15 pages.
+Whenever a free memory block (larger than 32kb) needs to be modified in the global heap, all memory pages involved will be locked, to deny access from other threads.
+Whenever the global heap needs to be extended, a mutex lock will lock the top of the memory in place, in order to avoid having more than one thread extending heap at the same time.
+A hash table is also used to identify the thread id (from the actual ID to 0~8).
+
+By utilizing separate memory heap for small objects and a page-aligned memory lock for large objects, we made sure multiple threads wouldn’t be able to access the same memory line at the same time, thus avoid false sharing. While each thread can still reach the rest of the lists for searching, therefore decrease the wait time of a thread in a lock. At the same time, since memory objects are all page-aligned, there is minimum fragmentation.
+
+

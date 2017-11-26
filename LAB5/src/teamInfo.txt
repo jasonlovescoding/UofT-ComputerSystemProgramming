@@ -1,0 +1,7 @@
+teamName: xxx
+student1_fullName: xxx
+student1_studentNumber: 999
+student1_email: xxx@mail.utoronto.ca
+student2_fullName: xxx
+student2_studentNumber: 999
+student2_email: xxx@mail.utoronto.ca

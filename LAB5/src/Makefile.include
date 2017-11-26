@@ -1,0 +1,46 @@
+# Makefile.include.other
+#
+
+# This kind of timer only works on x86_64 machines, like the PSI
+# compute nodes.
+### TIMER_TYPE=USE_X86_64_TIMER
+
+# This timer only works on IA64 (Itanium 2) machines, like the Citris
+# compute nodes.
+### TIMER_TYPE=USE_IA64_CYCLE_COUNTER
+
+# This timer works on pretty much any machine with POSIX support,
+# but the resolution is about 100 to 1000 times less than the cycle
+# counters.
+TIMER_TYPE=USE_GETTIMEOFDAY
+
+#
+# EDIT this as necessary to support your system.
+#
+USE_GCC=1
+ifeq ($(USE_GCC),1)
+	CC = gcc
+	LINKER = gcc
+	COPTFLAGS = -Wall -g -O2
+#	COPTFLAGS = -Wall -g -02
+else
+	CC = icc
+	LINKER = icc
+	COPTFLAGS = -g -O2
+#	COPTFLAGS = -g -O2
+endif
+
+CPPFLAGS += -D$(TIMER_TYPE) 
+CFLAGS = $(COPTFLAGS) 
+
+DYLIB_SUFFIX=so
+DYLIB_CREATE_FLAG=-shared
+DYLIB_FPIC_FLAG=-fPIC
+
+
+
+
+
+
+
+

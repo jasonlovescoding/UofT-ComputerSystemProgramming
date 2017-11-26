@@ -1,0 +1,47 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+BITBOARD_EXE	Makefile	/^BITBOARD_EXE = initboard$/;"	m
+BITBOARD_OBJS	Makefile	/^BITBOARD_OBJS = bitboard.o random_bit.o$/;"	m
+BOARD	lifeseq.c	19;"	d	file:
+DO_VERIFY	gol.c	12;"	d	file:
+DO_VERIFY	gol.c	14;"	d	file:
+EXES	Makefile	/^EXES = $(GOL_EXE) $(BITBOARD_EXE)$/;"	m
+GOL_EXE	Makefile	/^GOL_EXE = gol$/;"	m
+GOL_OBJS	Makefile	/^GOL_OBJS = gol.o life.o lifeseq.o load.o save.o $/;"	m
+GOL_VERIFY_EXE	Makefile	/^GOL_VERIFY_EXE = gol_verify$/;"	m
+GOL_VERIFY_OBJS	Makefile	/^GOL_VERIFY_OBJS = gol.verify.o life.o lifeseq.o load.o save.o $/;"	m
+OBJS	Makefile	/^OBJS = $(GOL_OBJS) $(BITBOARD_OBJS)$/;"	m
+SWAP_BOARDS	lifeseq.c	13;"	d	file:
+_life_h	life.h	2;"	d
+_load_h	load.h	2;"	d
+_random_bit_h	random_bit.h	2;"	d
+_save_h	save.h	2;"	d
+_util_h	util.h	2;"	d
+alivep	util.h	/^alivep (char count, char state)$/;"	f
+boards_equalp	gol.c	/^boards_equalp (const char b1[], const char b2[], const int nrows, const int ncols)$/;"	f	file:
+copy_board	gol.c	/^copy_board (char outboard[], const char inboard[], const int nrows, const int ncols)$/;"	f	file:
+deinit_random_bit	random_bit.c	/^deinit_random_bit ()$/;"	f	file:
+game_of_life	life.c	/^game_of_life (char* outboard, $/;"	f
+get_random_seed	random_bit.c	/^get_random_seed ()$/;"	f
+init_random_bit	random_bit.c	/^init_random_bit (uint32_t seed)$/;"	f
+load_board	load.c	/^load_board (FILE* input, int* nrows, int* ncols)$/;"	f
+load_board_values	load.c	/^load_board_values (FILE* input, const int nrows, const int ncols)$/;"	f	file:
+load_dimensions	load.c	/^load_dimensions (FILE* input, int* nrows, int* ncols)$/;"	f	file:
+main	bitboard.c	/^main (int argc, char* argv[]) $/;"	f
+main	gol.c	/^main (int argc, char* argv[])$/;"	f
+make_board	load.c	/^make_board (const int nrows, const int ncols)$/;"	f
+mod	util.h	/^mod (int x, int m)$/;"	f
+print_usage	bitboard.c	/^print_usage (const char argv0[])$/;"	f	file:
+print_usage	gol.c	/^print_usage (const char argv0[])$/;"	f	file:
+random_bit	random_bit.c	/^random_bit ()$/;"	f
+save_board	save.c	/^save_board (FILE* output, const char board[], const int nrows, const int ncols)$/;"	f
+save_board_values	save.c	/^save_board_values (FILE* output, const char board[], const int nrows, const int ncols)$/;"	f	file:
+save_dimensions	save.c	/^save_dimensions (FILE* output, const int nrows, const int ncols)$/;"	f	file:
+sequential_game_of_life	lifeseq.c	/^sequential_game_of_life (char* outboard, $/;"	f
+stream	random_bit.c	/^static VSLStreamStatePtr stream = NULL;$/;"	v	file:
+to_int	bitboard.c	/^to_int (int* num, const char* s)$/;"	f	file:
+to_int	gol.c	/^to_int (int* num, const char* s)$/;"	f	file:

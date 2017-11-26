@@ -11,7 +11,7 @@ if (@ARGV != 1) {
 
 my $dir=$ARGV[0];
 my $name;
-my $iters = 3;
+my $iters = 5;
 
 foreach $name ("cache-scratch", "cache-thrash", "threadtest", "larson") {
   print "benchmark name = $name\n";
