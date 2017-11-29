@@ -13,3 +13,14 @@
   N'th iteration. In order to avoid confusing students, the routine has been
   updated to return the correct board (i.e. after N iterations).
 
+
+#define UNROLL( __i, __isouth ) do {\
+				jnw = jw; jn = jc; jjn = jjc; jjne = jje;\
+				jw = jsw; jc = js; jjc = jjs; jje = jjse;\
+				jsw = BOARD(inboard, __isouth, jwest);\
+				js = BOARD(inboard, __isouth, j);\
+				jjs = BOARD(inboard, __isouth, jj);\
+				jjse = BOARD(inboard, __isouth, jjeast);\
+				BOARD(outboard, __i, j) = alivep(jnw + jn + jjn + jw + jjc + jsw + js + jjs, jc); \
+				BOARD(outboard, __i, jj) = alivep(jn + jjn + jjne + jc + jje + js + jjs + jjse, jjc); \
+} while(0)

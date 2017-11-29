@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <pthread.h>
 #include "barrier.h"
-#include <string.h>
 
 /*****************************************************************************
  * Helper function definitions
@@ -42,10 +41,8 @@ typedef struct tagArg {
 } Arg;
 
 #define UNROLL( __i) do {\
-	nwe = we; \
-	n = c; \
-	we = swe; \
-	c = s; \
+	nwe = we; n = c; \
+	we = swe; c = s; \
 	swe = BOARD(inboard, __i + 1, jwest) + BOARD(inboard, __i + 1, jeast); \
 	s = BOARD(inboard, __i + 1, j); \
 	BOARD(outboard, __i, j) = alivep(nwe + n + we + swe + s, c); \
@@ -377,14 +374,9 @@ game_of_life (char* outboard,
 	      const int ncols,
 	      const int gens_max)
 {
-	if (nrows < 32  || ONETHREAD_MODE) {
-		// no need to parallelize
+	if (nrows != ncols || nrows < 32 || nrows > 10000 || ONETHREAD_MODE) {
+		// gracefully return...
 		return sequential_game_of_life (outboard, inboard, nrows, ncols, gens_max);	
-	} else if (nrows != ncols || nrows % 2 != 0 || nrows > 10000) {
-		// gracefully exit...
-		fprintf(stderr, "You should provide an (N,N) image where N is power of 2 and N<=10000\n");
-		bzero(outboard, nrows * ncols);
-		return outboard;
 	}
 	
 	pthread_mutex_t lock;

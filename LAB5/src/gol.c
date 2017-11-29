@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <time.h>
 #include "life.h"
 #include "load.h"
 #include "save.h"
@@ -81,7 +81,6 @@ main (int argc, char* argv[])
   FILE* input = NULL;
   FILE* output = NULL;
   int err = 0;
-
   /* Parse command-line arguments */
   if (argc < argc_min || argc > argc_max)
     {
@@ -178,7 +177,6 @@ main (int argc, char* argv[])
     free (outboard);
   if (checkboard != NULL)
     free (checkboard);
-
   return 0;
 }
 

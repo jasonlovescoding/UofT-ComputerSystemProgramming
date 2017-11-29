@@ -19,7 +19,7 @@ endif
 
 GOL_EXE = gol
 GOL_VERIFY_EXE = gol_verify
-GOL_OBJS = gol.o hashtable.o life.o lifeseq.o load.o save.o 
+GOL_OBJS = gol.o barrier.o life.o lifeseq.o load.o save.o 
 GOL_VERIFY_OBJS = gol.verify.o life.o lifeseq.o load.o save.o 
 BITBOARD_EXE = initboard
 BITBOARD_OBJS = bitboard.o random_bit.o
@@ -44,11 +44,11 @@ $(BITBOARD_EXE): $(BITBOARD_OBJS)
 %.verify.o: %.c
 	$(CC) -c $(CFLAGS) -DVERIFY_FLAG $(CPPFLAGS) $< -o $@
 
+barrier.o: barrier.h barrier.c
+
 lifeseq.o: lifeseq.c life.h util.h
 
-hashtable.o: hashtable.h hashtable.c
-
-life.o: life.c life.h util.h hashtable.h 
+life.o: life.c life.h util.h 
 
 load.o: load.c load.h
 

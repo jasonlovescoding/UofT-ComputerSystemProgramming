@@ -21,12 +21,12 @@ USE_GCC=1
 ifeq ($(USE_GCC),1)
 	CC = gcc
 	LINKER = gcc
-	COPTFLAGS = -Wall -g -O2
+	COPTFLAGS = -O2
 #	COPTFLAGS = -Wall -g -02
 else
 	CC = icc
 	LINKER = icc
-	COPTFLAGS = -g -O2
+	COPTFLAGS = -O2
 #	COPTFLAGS = -g -O2
 endif
 
