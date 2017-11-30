@@ -1,4 +1,35 @@
 /*****************************************************************************
+Parallelization strategy: barrier parallelization
+- We choose barrier parallelization to avoid the release and join of worker threads at every iteration.
+  With a barrier the threads will wait for each other until all of them finished this iteration.
+  This is necessary because each thread will rely on the correctness of its neighbor of boundary column,
+  which is written by its neighbor worker.
+
+Optimization: 1. avoid unnecessary reading; 2. loop peeling; 3. loop unrolling; 
+1. 
+- This is based on a observation on the sequential implementation: each pixel in the image is read for 9 times.
+We instead use a lookup window to reduce this number to 3 (could be better but bounded by the limit of registers).
+we choose to use a 3-by-3 window, and each time the window center slides to the next pixel, only a new 3-pixel column
+will need to read.
+2. 
+- This is divided into 2 levels:
+At column level, we choose to split the thread worker into 3 types.
+if the worker deals with top part of the image, its window's starting column needs to be wrapped around ncols. This is hand-coded.
+if the worker deals with middle part of the image, no wrap-around is needed.
+if the worker deals with the bottom part of the image, its window's ending column needs to be wrapped around ncols. This is hand-coded.
+By peeling this loop, we avoided any invoking of mod at column level.
+
+At row level, we choose to split the iteration. Our first lookup window will be centered at the bottom of the row, so that
+the only pixel that needs to be wrapped around will be treated outside the loop. So in the loop of rows, no wrap-around is needed.
+
+Combined, we get rid of the function usage of 'mod'.
+3. 
+- At row level, we found that the sliding of the lookup window can be unrolled. 
+After some testing we decided to unroll by 16.
+
+*****************************************************************************/
+
+/*****************************************************************************
  * life.c
  * Parallelized and optimized implementation of the game of life resides here
  ****************************************************************************/
@@ -27,8 +58,10 @@
 // test machine is 8-core
 #define NUM_THREADS 8
 
+// just for generating reference solution..
 #define ONETHREAD_MODE 0
- 
+
+// the arguments for worker threads 
 typedef struct tagArg {
 	char *outboard;
 	char *inboard;
@@ -36,11 +69,11 @@ typedef struct tagArg {
 	int ncols;
 	int col_start;
 	int col_end;
-	int LDA;
 	int gens_max;
 	Barrier *barrier;
 } Arg;
 
+// this macro controls the sliding of lookup window
 #define UNROLL( __i) do {\
 	nwe = we; \
 	n = c; \
@@ -51,6 +84,9 @@ typedef struct tagArg {
 	BOARD(outboard, __i, j) = alivep(nwe + n + we + swe + s, c); \
 } while(0)
 
+// worker threads are divided into 3 classes: top, middle and bottom
+// corresponding to the partition of image it deals with
+// this is for avoiding the calling of mod function
 void *top_worker(void *arg_p) {
 	// read the args
 	Arg *arg = (Arg *)arg_p;
@@ -68,6 +104,7 @@ void *top_worker(void *arg_p) {
 	int i, j;
 	// per-thread sequential part
 	for (int curgen = 0; curgen < gens_max; curgen++) {
+		// for worker at top of this image, the starting column is 0, and the wrap-around is hand coded as such
 		j = 0; {
 			jwest = ncols - 1;
 			jeast = 1;
@@ -191,6 +228,7 @@ void *middle_worker(void *arg_p) {
 	// per-thread sequential part
 	for (int curgen = 0; curgen < gens_max; curgen++) {
 		// the image is column-major in memory, so is the loop		
+		// for workers at middle of the image, there is no need for wrap-around
 		for (j = col_start; j < col_end; j++) {
 			jwest = j-1;
 			jeast = j+1;
@@ -312,7 +350,9 @@ void *bottom_worker(void *arg_p) {
 				UNROLL(i+12);
 				UNROLL(i+13);
 				UNROLL(i+14);
-		}	{
+		}
+		// for worker at bottom of the image, the end column is the last column, and the wrap-around is hand-coded as such	
+		{
 			jwest = col_end - 2;
 			jeast = 0;
 
@@ -386,12 +426,13 @@ game_of_life (char* outboard,
 		bzero(outboard, nrows * ncols);
 		return outboard;
 	}
-	
+	// components of barrier
 	pthread_mutex_t lock;
 	pthread_mutex_init(&lock, NULL);
 	pthread_cond_t cond;
 	pthread_cond_init(&cond, NULL);
-
+	
+	// the barrier should let threads pass only when all threads have finished this iteration because the boundaries are shared
 	Barrier barrier;
 	barrier.cond = &cond;
 	barrier.lock = &lock;
@@ -410,13 +451,13 @@ game_of_life (char* outboard,
 		arg[i].gens_max = gens_max;
 		arg[i].barrier = &barrier;
 	}
-	// create threads
+	// create threads at top
 	pthread_create(&tid[0], NULL, top_worker, (void *)&arg[0]);	
 	for (int i = 1; i < NUM_THREADS - 1; i++) {
-		// create threads
+		// create threads at middle
 		pthread_create(&tid[i], NULL, middle_worker, (void *)&arg[i]);	
 	}
-	// create threads
+	// create threads at bottom
 	pthread_create(&tid[NUM_THREADS - 1], NULL, bottom_worker, (void *)&arg[NUM_THREADS - 1]);	
 
 	for (int i = 0; i < NUM_THREADS; i++) {
@@ -426,3 +467,4 @@ game_of_life (char* outboard,
 	
 	return inboard;
 }
+
