@@ -2,6 +2,6 @@ teamName: C99
 student1_fullName: ZHANG QIANHAO
 student1_studentNumber: 1004654377
 student1_email: qianhao.zhang@mail.utoronto.ca
-student2_fullName: xxx
-student2_studentNumber: 999
-student2_email: xxx@mail.utoronto.ca
+student2_fullName: CHEN JINGFENG
+student2_studentNumber: 1000411262
+student2_email: jingfeng.chen@mail.utoronto.ca

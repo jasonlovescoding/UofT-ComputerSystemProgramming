@@ -74,6 +74,11 @@ typedef struct tagArg {
 } Arg;
 
 // this macro controls the sliding of lookup window
+// this subroutine avoids duplicate BOARD reading on the image.
+// each time the 3-by-3 lookup window slides to the south by 1 pixel, 
+// the original north row will be replaced by the original center row,
+// the original center row will be replaced by the original south row,
+// and the read a new south row.
 #define UNROLL( __i) do {\
 	nwe = we; \
 	n = c; \
@@ -87,6 +92,7 @@ typedef struct tagArg {
 // worker threads are divided into 3 classes: top, middle and bottom
 // corresponding to the partition of image it deals with
 // this is for avoiding the calling of mod function
+// each worker deals with a partition of the image, here is 1/8 of the image (column-major)
 void *top_worker(void *arg_p) {
 	// read the args
 	Arg *arg = (Arg *)arg_p;
@@ -108,7 +114,8 @@ void *top_worker(void *arg_p) {
 		j = 0; {
 			jwest = ncols - 1;
 			jeast = 1;
-
+			// peel the loop into 2 cases: first we deal with the end-of-row pixel, which is the only one that will
+			// make the UNROLL subroutine be wrapped around
 			nwe = BOARD(inboard, nrows - 2, jwest) + BOARD(inboard, nrows - 2, jeast);
 			n = BOARD(inboard, nrows - 2, j);
 
@@ -210,6 +217,10 @@ void *top_worker(void *arg_p) {
 	return NULL;
 }
 
+// worker threads are divided into 3 classes: top, middle and bottom
+// corresponding to the partition of image it deals with
+// this is for avoiding the calling of mod function
+// each worker deals with a partition of the image, here is 1/8 of the image (column-major)
 void *middle_worker(void *arg_p) {
 	// read the args
 	Arg *arg = (Arg *)arg_p;
@@ -232,7 +243,8 @@ void *middle_worker(void *arg_p) {
 		for (j = col_start; j < col_end; j++) {
 			jwest = j-1;
 			jeast = j+1;
-
+			// peel the loop into 2 cases: first we deal with the end-of-row pixel, which is the only one that will
+			// make the UNROLL subroutine be wrapped around
 			nwe = BOARD(inboard, nrows - 2, jwest) + BOARD(inboard, nrows - 2, jeast);
 			n = BOARD(inboard, nrows - 2, j);
 
@@ -284,6 +296,10 @@ void *middle_worker(void *arg_p) {
 	return NULL;
 }
 
+// worker threads are divided into 3 classes: top, middle and bottom
+// corresponding to the partition of image it deals with
+// this is for avoiding the calling of mod function
+
 void *bottom_worker(void *arg_p) {
 	// read the args
 	Arg *arg = (Arg *)arg_p;
@@ -305,7 +321,8 @@ void *bottom_worker(void *arg_p) {
 		for (j = col_start; j < col_end - 1; j++) {
 			jwest = j-1;
 			jeast = j+1;
-
+			// peel the loop into 2 cases: first we deal with the end-of-row pixel, which is the only one that will
+			// make the UNROLL subroutine be wrapped around
 			nwe = BOARD(inboard, nrows - 2, jwest) + BOARD(inboard, nrows - 2, jeast);
 			n = BOARD(inboard, nrows - 2, j);
 
@@ -451,6 +468,8 @@ game_of_life (char* outboard,
 		arg[i].gens_max = gens_max;
 		arg[i].barrier = &barrier;
 	}
+	// peel the loop into 3 cases: top, middle and bottom 
+	// each with its own wrap-around strategy that can be hand-coded to avoid 'mod'
 	// create threads at top
 	pthread_create(&tid[0], NULL, top_worker, (void *)&arg[0]);	
 	for (int i = 1; i < NUM_THREADS - 1; i++) {
